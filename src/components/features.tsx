@@ -3,9 +3,9 @@ import { features, Feature } from "@/app/constants";
 
 const Features = () => {
   return (
-    <section id="features">
+    <section className="flex flex-col items-center text-center rounded-lg">
       <div className="container px-4 md:px-6">
-        <div className="text-center space-y-6 mb-12">
+        <div className="text-center mb-8">
           <h2>
             Streamline your workflow with our powerful task management platform.
           </h2>
@@ -19,10 +19,12 @@ const Features = () => {
             return (
               <div
                 key={index}
-                className="flex flex-col items-center text-center p-6 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                className="flex flex-col items-center text-center p-6 bg-white rounded-lg border border-[#113F67]"
               >
                 <Icon className="h-12 w-12 text-[#113F67] mb-4" />
-                <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
+                <h3 className="text-xl font-semibold mb-2 text-[#113F67]">
+                  {feature.title}
+                </h3>
                 <p className="text-muted-foreground">{feature.description}</p>
               </div>
             );

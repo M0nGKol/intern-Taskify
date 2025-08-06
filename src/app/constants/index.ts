@@ -39,25 +39,25 @@ export interface Testimonial {
         "Data Analyst's insights have improved Taskify a lot. More transparency on updates would be a plus!",
       name: "Johnson",
       title: "COO",
-      image: "/Pic003.jpeg",
+      image: "/Pic001.jpg",
     },
     {
       quote: "Efficient, reliable, and easy to use. This has changed how we work!",
       name: "Alice",
       title: "Product Owner",
-      image: "/Pic004.jpeg",
+      image: "/Pic001.jpg",
     },
     {
       quote: "A great tool for organizing tasks across multiple teams.",
       name: "Steve",
       title: "Project Manager",
-      image: "/Pic005.avif",
+      image: "/Pic001.jpg",
     },
     {
       quote: "Simplifies planning and makes task tracking easy and fun.",
       name: "Emma",
       title: "Scrum Master",
-      image: "/Pic006.jpg",
+      image: "/Pic001.jpg",
     },
   ];
   

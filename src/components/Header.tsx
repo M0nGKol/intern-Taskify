@@ -1,5 +1,4 @@
 import React from "react";
-import { Mail, Users, CalendarDays } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -34,10 +33,10 @@ const Header = () => {
         </nav>
         <div className="flex items-center gap-4">
           <Button variant="ghost" asChild>
-            <Link href="/auth/login">Log In</Link>
+            <Link href="/sign-in">Log In</Link>
           </Button>
           <Button className="bg-[#113F67] text-white" asChild>
-            <Link href="/auth/signup">Get Started</Link>
+            <Link href="/sign-up">Get Started</Link>
           </Button>
         </div>
       </header>

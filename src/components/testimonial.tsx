@@ -10,6 +10,8 @@ const cardsPerView = 3;
 const Testimonial = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  const totalSlides = testimonials.length - cardsPerView + 1;
+
   const goToPrev = () => {
     setCurrentIndex((prev) =>
       prev === 0 ? testimonials.length - cardsPerView : prev - 1
@@ -24,8 +26,11 @@ const Testimonial = () => {
     );
   };
 
+  const goToSlide = (index: number) => {
+    setCurrentIndex(index);
+  };
+
   const getVisibleCards = () => {
-    // Loop back to start if overflow
     const visibleCards = [];
     for (let i = 0; i < cardsPerView; i++) {
       const index = (currentIndex + i) % testimonials.length;
@@ -37,51 +42,67 @@ const Testimonial = () => {
   return (
     <section
       id="testimonials"
-      className="flex flex-col items-center text-center p-6 rounded-lg"
+      className="flex flex-col items-center text-center rounded-lg"
     >
       <div className="container px-4 md:px-6 text-center">
-        <h2 className="text-3xl font-bold tracking-tight mb-8">
-          What Our Users Say
-        </h2>
+        <h2>What Our Users Say</h2>
 
         <div className="relative">
           <button
             onClick={goToPrev}
-            className="absolute left-[-20px] top-1/2 -translate-y-1/2 z-10 p-2 bg-white rounded-full shadow hover:bg-gray-100"
+            className="absolute left-[-20px] top-1/2 -translate-y-1/2 z-10 p-2 text-white bg-[#113F67] rounded-full shadow"
             aria-label="Previous"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
 
-          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 object-fit">
             {getVisibleCards().map((item, index) => (
               <div
                 key={index}
-                className="bg-white p-6 rounded-lg shadow-md flex flex-col items-center text-center transition-all"
+                className="bg-white p-6 rounded-lg border border-[#113F67] flex flex-col items-center text-center transition-all h-64 gap-4"
               >
-                <Image
-                  src={item.image}
-                  width={64}
-                  height={64}
-                  alt={item.name}
-                  className="rounded-full mb-2 object-cover object-center"
-                />
-                <p className="font-semibold">{item.name}</p>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {item.title}
+                <div className="flex flex-col items-center">
+                  <Image
+                    src={item.image}
+                    width={64}
+                    height={64}
+                    alt={item.name}
+                    className="rounded-full mb-2 object-cover object-center"
+                  />
+                  <p className="font-semibold">{item.name}</p>
+                  <p className="text-sm text-muted-foreground">{item.title}</p>
+                </div>
+                <p className="text-muted-foreground italic text-sm">
+                  "{item.quote}"
                 </p>
-                <p className="text-muted-foreground italic">"{item.quote}"</p>
               </div>
             ))}
           </div>
 
           <button
             onClick={goToNext}
-            className="absolute right-[-20px] top-1/2 -translate-y-1/2 z-10 p-2 bg-white rounded-full shadow hover:bg-gray-100"
+            className="absolute right-[-20px] top-1/2 -translate-y-1/2 z-10 p-2 text-white bg-[#113F67] rounded-full shadow"
             aria-label="Next"
           >
             <ChevronRight className="w-6 h-6" />
           </button>
+        </div>
+
+        {/* Dot Indicators */}
+        <div className="flex justify-center space-x-2 mt-8">
+          {Array.from({ length: totalSlides }).map((_, index) => (
+            <button
+              key={index}
+              onClick={() => goToSlide(index)}
+              className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                currentIndex === index
+                  ? "bg-[#113F67] scale-110"
+                  : "bg-gray-300 hover:bg-gray-400"
+              }`}
+              aria-label={`Go to slide ${index + 1}`}
+            />
+          ))}
         </div>
       </div>
     </section>
