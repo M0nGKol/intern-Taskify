@@ -35,7 +35,7 @@ const Header = () => {
           <Button variant="ghost" asChild>
             <Link href="/sign-in">Log In</Link>
           </Button>
-          <Button className="bg-[#113F67] text-white" asChild>
+          <Button className="bg-primary text-white" asChild>
             <Link href="/sign-up">Get Started</Link>
           </Button>
         </div>

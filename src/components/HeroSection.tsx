@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 const HeroSection = () => {
   return (
     <>
-      <section className=" h-[500px] flex px-16 py-8 bg-[#113F67] text-white rounded-2xl">
+      <section className=" h-[500px] flex px-16 py-8 bg-primary text-white rounded-2xl">
         <div className=" flex justify-center items-center container px-16 text-left">
           <div className="max-w-3xl space-y-6 flex flex-col items-start">
             <h1 className="text-2xl font-medium tracking-tighter sm:text-3xl md:text-4xl">
@@ -19,10 +19,10 @@ const HeroSection = () => {
             </p>
             <div className="flex flex-col sm:flex-row justify-start gap-4">
               <Button
-                className="bg-white text-[#113F67] hover:bg-gray-100 px-8 py-3 text-lg font-semibold rounded-lg shadow-lg"
+                className="bg-white text-primary hover:bg-gray-100 px-8 py-3 text-lg font-semibold rounded-lg shadow-lg"
                 asChild
               >
-                <Link href="/sign-in">Try Now – Free</Link>
+                <Link href="/sign-up">Try Now – Free</Link>
               </Button>
             </div>
           </div>

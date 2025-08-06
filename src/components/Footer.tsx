@@ -11,7 +11,7 @@ const Footer = () => {
     <>
       <footer className="flex flex-col justify-center items-center py-12">
         <div className="container px-4 md:px-6">
-          <div className="border border-[#113F67] rounded-xl p-8 grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+          <div className="border border-primary rounded-xl p-8 grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
             {/* Left Section: Logo and Tagline */}
             <div className="flex flex-col items-start space-y-2">
               <div className="flex items-center gap-2 font-bold text-2xl">

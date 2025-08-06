@@ -19,10 +19,10 @@ const Features = () => {
             return (
               <div
                 key={index}
-                className="flex flex-col items-center text-center p-6 bg-white rounded-lg border border-[#113F67]"
+                className="flex flex-col items-center text-center p-6 bg-white rounded-lg border border-primary"
               >
-                <Icon className="h-12 w-12 text-[#113F67] mb-4" />
-                <h3 className="text-xl font-semibold mb-2 text-[#113F67]">
+                <Icon className="h-12 w-12 text-primary mb-4" />
+                <h3 className="text-xl font-semibold mb-2 text-primary">
                   {feature.title}
                 </h3>
                 <p className="text-muted-foreground">{feature.description}</p>

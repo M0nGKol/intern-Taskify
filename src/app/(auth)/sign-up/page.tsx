@@ -101,22 +101,22 @@ export default function SignUpPage() {
                 />
               </div>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-start gap-2">
               <input
                 type="checkbox"
                 id="terms"
-                className="h-4 w-4 rounded border-gray-300 text-[#5FA8D3] focus:ring-[#5FA8D3]"
+                className="h-8 w-8 rounded border-gray-300 text-[#5FA8D3] focus:ring-[#5FA8D3]"
               />
-              <Label htmlFor="terms" className="text-sm text-gray-700">
+              <Label htmlFor="terms" className="text-xs text-gray-700">
                 By checking this box, I acknowledge that I have read and agree
                 to the{" "}
                 <Link
                   href="#"
-                  className="text-[#5FA8D3] hover:underline"
-                  prefetch={false}
+                  className="text-[#5FA8D3] hover:underline underline"
                 >
-                  Terms and Conditions.
+                  Terms and Conditions
                 </Link>
+                .
               </Label>
             </div>
             <Button

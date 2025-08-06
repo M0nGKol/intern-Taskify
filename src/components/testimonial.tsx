@@ -50,7 +50,7 @@ const Testimonial = () => {
         <div className="relative">
           <button
             onClick={goToPrev}
-            className="absolute left-[-20px] top-1/2 -translate-y-1/2 z-10 p-2 text-white bg-[#113F67] rounded-full shadow"
+            className="absolute left-[-20px] top-1/2 -translate-y-1/2 z-10 p-2 text-white bg-primary rounded-full shadow"
             aria-label="Previous"
           >
             <ChevronLeft className="w-6 h-6" />
@@ -60,7 +60,7 @@ const Testimonial = () => {
             {getVisibleCards().map((item, index) => (
               <div
                 key={index}
-                className="bg-white p-6 rounded-lg border border-[#113F67] flex flex-col items-center text-center transition-all h-64 gap-4"
+                className="bg-white p-6 rounded-lg border border-primary flex flex-col items-center text-center transition-all h-64 gap-4"
               >
                 <div className="flex flex-col items-center">
                   <Image
@@ -82,7 +82,7 @@ const Testimonial = () => {
 
           <button
             onClick={goToNext}
-            className="absolute right-[-20px] top-1/2 -translate-y-1/2 z-10 p-2 text-white bg-[#113F67] rounded-full shadow"
+            className="absolute right-[-20px] top-1/2 -translate-y-1/2 z-10 p-2 text-white bg-primary rounded-full shadow"
             aria-label="Next"
           >
             <ChevronRight className="w-6 h-6" />
@@ -97,7 +97,7 @@ const Testimonial = () => {
               onClick={() => goToSlide(index)}
               className={`w-3 h-3 rounded-full transition-all duration-300 ${
                 currentIndex === index
-                  ? "bg-[#113F67] scale-110"
+                  ? "bg-primary scale-110"
                   : "bg-gray-300 hover:bg-gray-400"
               }`}
               aria-label={`Go to slide ${index + 1}`}
