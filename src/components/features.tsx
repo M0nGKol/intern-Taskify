@@ -1,5 +1,5 @@
 import React from "react";
-import { features, Feature } from "@/app/constants";
+import { features, Feature } from "@/constants";
 
 const Features = () => {
   return (

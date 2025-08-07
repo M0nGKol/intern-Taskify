@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { testimonials } from "@/app/constants";
+import { testimonials } from "@/constants";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const cardsPerView = 3;

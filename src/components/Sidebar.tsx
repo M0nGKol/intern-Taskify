@@ -1,3 +1,4 @@
+"use client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Home, Rocket, CheckSquare, FileText, Plus, Users } from "lucide-react";
 import Link from "next/link";
@@ -8,7 +9,7 @@ const Sidebar = () => {
     <>
       <div className="w-20 h-screen bg-primary flex flex-col items-center py-6">
         <Avatar className="w-12 h-12 mb-8">
-          <AvatarImage src="/placeholder.svg?height=48&width=48" />
+          <AvatarImage src="/" />
           <AvatarFallback className="bg-gray-400">M</AvatarFallback>
         </Avatar>
 
@@ -43,7 +44,7 @@ const Sidebar = () => {
 
         <div className="mt-auto">
           <Avatar className="w-10 h-10">
-            <AvatarImage src="/placeholder.svg?height=40&width=40" />
+            <AvatarImage src="/" />
             <AvatarFallback className="bg-gray-600">🐾</AvatarFallback>
           </Avatar>
         </div>
