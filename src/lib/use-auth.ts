@@ -7,6 +7,8 @@ export interface User {
   id: string;
   email: string;
   name?: string;
+  imageURL?: string;
+  image?: string;
 }
 
 export function useAuth() {
@@ -20,7 +22,7 @@ export function useAuth() {
         setIsAuthenticated(false);
         setUser(null);
       } catch (error) {
-        console.error("Error checking authentication:", error);
+  
         setIsAuthenticated(false);
         setUser(null);
       } finally {
@@ -37,7 +39,6 @@ export function useAuth() {
       setUser(null);
       setIsAuthenticated(false);
     } catch (error) {
-      console.error("Error signing out:", error);
     }
   };
 

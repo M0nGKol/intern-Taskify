@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionCookie } from "better-auth/cookies";
 import { rateLimit } from "./src/middleware/rate-limit";
- 
+
 export async function middleware(request: NextRequest) {
-	const sessionCookie = getSessionCookie(request);
+	const sessionCookie = request.cookies.get("session-token")?.value;
 	const { pathname } = request.nextUrl;
 
 	// Rate limiting for auth endpoints
@@ -22,10 +21,10 @@ export async function middleware(request: NextRequest) {
 			return NextResponse.redirect(new URL("/sign-in", request.url));
 		}
 	}
- 
+
 	return NextResponse.next();
 }
- 
+
 export const config = {
 	matcher: [
 		"/dashboard/:path*",

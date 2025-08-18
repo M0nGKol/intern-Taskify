@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 interface JoinTeamModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onProjectJoined: (projectName: string) => void;
+  onProjectJoined: (payload: { projectName: string; teamId: string }) => void;
 }
 
 export function JoinTeamModal({
@@ -25,10 +25,9 @@ export function JoinTeamModal({
   const [teamId, setTeamId] = useState("");
 
   const handleSubmit = () => {
-    if (teamId.trim()) {
-      // For now, we'll use the team ID as the project name
-      // In a real app, you'd fetch the actual project name from the API
-      onProjectJoined(`Team ${teamId.trim()}`);
+    const id = teamId.trim();
+    if (id) {
+      onProjectJoined({ projectName: `Team ${id}`, teamId: id });
       setTeamId(""); // Reset form
     }
   };

@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 interface CreateProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onProjectCreated: (projectName: string) => void;
+  onProjectCreated: (payload: { projectName: string; teamId: string }) => void;
 }
 
 export function CreateProjectModal({
@@ -23,15 +23,20 @@ export function CreateProjectModal({
 }: CreateProjectModalProps) {
   const [projectName, setProjectName] = useState("");
 
+  const generateTeamId = () =>
+    "TEAM-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+
   const handleSubmit = () => {
-    if (projectName.trim()) {
-      onProjectCreated(projectName.trim());
-      setProjectName(""); // Reset form
+    const name = projectName.trim();
+    if (name) {
+      const teamId = generateTeamId();
+      onProjectCreated({ projectName: name, teamId });
+      setProjectName("");
     }
   };
 
   const handleClose = () => {
-    setProjectName(""); // Reset form on close
+    setProjectName("");
     onClose();
   };
   return (
@@ -45,18 +50,18 @@ export function CreateProjectModal({
 
         <div className="space-y-4 py-4">
           <div>
-            <Input 
-              placeholder="Enter project name" 
+            <Input
+              placeholder="Enter project name"
               className="w-full"
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
             />
           </div>
         </div>
 
         <div className="flex justify-center pt-4">
-          <Button 
+          <Button
             className="bg-blue-500 hover:bg-blue-600 text-white w-full"
             onClick={handleSubmit}
             disabled={!projectName.trim()}

@@ -6,6 +6,7 @@ interface User {
   id: string;
   email: string;
   name?: string;
+  image?: string;
 }
 
 interface AuthContextType {
@@ -26,11 +27,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshAuth = async () => {
     try {
       const session = await authClient.getSession();
+
       if (session && "data" in session && session.data?.user) {
         setUser({
           id: session.data.user.id,
           email: session.data.user.email,
           name: session.data.user.name || undefined,
+          image: session.data.user.image || undefined,
         });
         setIsAuthenticated(true);
       } else {
@@ -38,7 +41,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(false);
       }
     } catch (error) {
-      console.error("Error refreshing auth:", error);
       setUser(null);
       setIsAuthenticated(false);
     } finally {
@@ -55,9 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await authClient.signOut();
       setUser(null);
       setIsAuthenticated(false);
-    } catch (error) {
-      console.error("Error signing out:", error);
-    }
+    } catch (error) {}
   };
 
   const value = {

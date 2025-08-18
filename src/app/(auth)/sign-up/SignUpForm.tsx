@@ -17,6 +17,7 @@ export default function SignUp() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
   const router = useRouter();
@@ -61,20 +62,24 @@ export default function SignUp() {
     }
   };
 
-  // const handleGoogleSignUp = async () => {
-  //   setIsLoading(true);
-  //   setError("");
+  const handleGoogleSignUp = async () => {
+    setIsGoogleLoading(true);
+    setError("");
 
-  //   try {
-  //     await authClient.signUp.oauth({
-  //       provider: "google",
-  //     });
-  //   } catch (err: any) {
-  //     setError(err.message || "Failed to sign up with Google.");
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
+    try {
+      await authClient.signIn.social({
+        provider: "google",
+        callbackURL: `${window.location.origin}/dashboard`,
+      });
+      await refreshAuth();
+      toast.success("Signed up successfully");
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err.message || "Failed to sign up with Google.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div>
@@ -106,7 +111,7 @@ export default function SignUp() {
               </div>
             )}
 
-            {/* <Button
+            <Button
               type="button"
               variant="outline"
               className="w-full max-w-xs justify-center gap-2 rounded-md border border-gray-300 bg-[#F5F5F5] py-2 text-gray-700 shadow-sm hover:bg-gray-100"
@@ -120,7 +125,7 @@ export default function SignUp() {
                 height={20}
               />
               Continue with Gmail
-            </Button> */}
+            </Button>
           </div>
 
           {/* Separator */}

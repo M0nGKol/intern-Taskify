@@ -5,9 +5,9 @@ import { ProtectedRoute } from "@/components/auth/protected-route";
 export default function PageLayout({ children }: PropsWithChildren) {
   return (
     <ProtectedRoute>
-      <div className="flex min-h-screen">
+      <div className="flex h-screen overflow-hidden">
         <Sidebar />
-        <div className="flex-1">{children}</div>
+        <div className="flex-1 h-full overflow-y-auto">{children}</div>
       </div>
     </ProtectedRoute>
   );

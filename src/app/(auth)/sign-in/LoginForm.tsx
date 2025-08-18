@@ -15,9 +15,11 @@ export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState("");
   const { refreshAuth } = useAuth();
   const router = useRouter();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -35,6 +37,24 @@ export default function LoginForm() {
       toast.error(err.message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    setError("");
+
+    try {
+      await authClient.signIn.social({
+        provider: "google",
+        callbackURL: `${window.location.origin}/dashboard`,
+      });
+      await refreshAuth();
+      toast.success("Signed in successfully");
+      router.push("/dashboard");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to sign in with Google");
+      setIsGoogleLoading(false);
     }
   };
 
@@ -57,10 +77,11 @@ export default function LoginForm() {
             size="lg"
             variant="outline"
             className="w-full justify-center gap-2 rounded-md border border-gray-300 bg-[#F5F5F5] py-2 text-gray-700 hover:bg-gray-100"
-            disabled={isLoading}
+            disabled={isLoading || isGoogleLoading}
+            onClick={handleGoogleSignIn}
           >
             <Image src="/google.png" alt="Google Logo" width={20} height={20} />
-            Continue with Gmail
+            {isGoogleLoading ? "Signing in..." : "Continue with Google"}
           </Button>
 
           <div className="relative flex items-center justify-center">
@@ -114,7 +135,7 @@ export default function LoginForm() {
               </div>
               <Button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || isGoogleLoading}
                 className="w-full rounded-md bg-[#5FA8D3] py-2 text-white shadow-sm hover:bg-[#4A90C2] disabled:opacity-50"
               >
                 {isLoading ? "Signing In..." : "Log In"}
