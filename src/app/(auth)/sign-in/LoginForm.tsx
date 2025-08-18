@@ -1,40 +1,43 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Mail, Lock } from "lucide-react";
 import Link from "next/link";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { redirect } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/providers/auth-provider";
 import { toast } from "sonner";
-import { SignInSchema, SignInSchemaValue } from "@/lib/schema/auth";
-import { credentialsSignIn } from "@/lib/actions/auth.actions";
 
-export default function LoginForm({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
-  const form = useForm<z.infer<typeof SignInSchema>>({
-    resolver: zodResolver(SignInSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  });
-  async function onSubmit(values: SignInSchemaValue) {
-    const { data, message } = await credentialsSignIn(values);
-    if (!data) {
-      toast.error(message);
+export default function LoginForm() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const { refreshAuth } = useAuth();
+  const router = useRouter();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    try {
+      await authClient.signIn.email({
+        email,
+        password,
+      });
+      await refreshAuth();
+      toast.success("Signed in successfully");
+      router.push("/dashboard");
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setIsLoading(false);
     }
-    if (data) {
-      toast.success(message);
-      redirect("/dashboard");
-    }
-  }
+  };
+
   return (
     <div>
       <main className="flex flex-1 items-center justify-center py-12">
@@ -42,21 +45,32 @@ export default function LoginForm({
           <div className="space-y-2 text-center">
             <h1 className="text-3xl font-bold text-[#1A202C]">Log In</h1>
           </div>
+
+          {error && (
+            <div className="rounded-md bg-red-50 p-3 text-sm text-red-600">
+              {error}
+            </div>
+          )}
+
           <Button
+            type="button"
             size="lg"
             variant="outline"
             className="w-full justify-center gap-2 rounded-md border border-gray-300 bg-[#F5F5F5] py-2 text-gray-700 hover:bg-gray-100"
+            disabled={isLoading}
           >
             <Image src="/google.png" alt="Google Logo" width={20} height={20} />
             Continue with Gmail
           </Button>
+
           <div className="relative flex items-center justify-center">
             <span className="absolute bg-white px-2 text-sm text-gray-500">
               Or with your own Taskify Account
             </span>
             <div className="w-full border-t border-gray-300" />
           </div>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
+
+          <form onSubmit={handleSubmit}>
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label
@@ -71,16 +85,12 @@ export default function LoginForm({
                     id="email"
                     type="email"
                     placeholder="Email"
-                    className="w-full rounded-md border-none bg-[#F5F5F5] py-2 pl-10 pr-3 text-gray-700 focus:ring-2 focus:ring-blue-500"
-                    {...form.register("email")}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
+                    className="w-full rounded-md border-none bg-[#F5F5F5] py-2 pl-10 pr-3 text-gray-700 focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                {form.formState.errors.email && (
-                  <p className="text-sm text-red-500">
-                    {form.formState.errors.email.message}
-                  </p>
-                )}
               </div>
               <div className="space-y-2">
                 <Label
@@ -95,22 +105,19 @@ export default function LoginForm({
                     id="password"
                     type="password"
                     placeholder="Password"
-                    className="w-full rounded-md border-none bg-[#F5F5F5] py-2 pl-10 pr-3 text-gray-700 focus:ring-2 focus:ring-blue-500"
-                    {...form.register("password")}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     required
+                    className="w-full rounded-md border-none bg-[#F5F5F5] py-2 pl-10 pr-3 text-gray-700 focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                {form.formState.errors.password && (
-                  <p className="text-sm text-red-500">
-                    {form.formState.errors.password.message}
-                  </p>
-                )}
               </div>
               <Button
                 type="submit"
-                className="w-full rounded-md bg-[#5FA8D3] py-2 text-white shadow-sm hover:bg-[#4A90C2]"
+                disabled={isLoading}
+                className="w-full rounded-md bg-[#5FA8D3] py-2 text-white shadow-sm hover:bg-[#4A90C2] disabled:opacity-50"
               >
-                Log In
+                {isLoading ? "Signing In..." : "Log In"}
               </Button>
             </div>
           </form>
