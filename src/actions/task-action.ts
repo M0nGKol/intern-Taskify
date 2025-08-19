@@ -4,7 +4,8 @@ import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { task, NewTask, Task } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL!,
@@ -12,71 +13,23 @@ const pool = new Pool({
 
 const db = drizzle(pool);
 
-// Helper function to handle both 12-hour and 24-hour time formats
-function normalizeTime(timeInput: string): string {
-  if (!timeInput || typeof timeInput !== 'string') {
-    throw new Error('Invalid time format');
-  }
-  
-  const trimmedTime = timeInput.trim();
-  
-  // Check if it's already in 24-hour format (HH:MM, H:MM, or HH:MM:SS)
-  if (trimmedTime.match(/^\d{1,2}:\d{2}(:\d{2})?$/) && !trimmedTime.toLowerCase().includes('am') && !trimmedTime.toLowerCase().includes('pm')) {
-    const timeParts = trimmedTime.split(':');
-    const hours = timeParts[0];
-    const minutes = timeParts[1];
-    const seconds = timeParts[2] || '00'; 
-    const hour = parseInt(hours, 10);
-    
-    if (hour >= 0 && hour <= 23) {
-      return `${hour.toString().padStart(2, '0')}:${minutes}:${seconds}`;
-    }
-  }
-  
-  // Handle 12-hour format with AM/PM
-  const parts = trimmedTime.split(' ');
-  if (parts.length !== 2) {
-    throw new Error(`Time must be in "HH:MM", "HH:MM:SS" or "HH:MM AM/PM" format. Received: "${timeInput}"`);
-  }
-  
-  const [time, modifier] = parts;
-  const timeParts = time.split(':');
-  
-  if (timeParts.length !== 2) {
-    throw new Error('Time must be in HH:MM format');
-  }
-  
-  const [hours, minutes] = timeParts;
-  let hour24 = parseInt(hours, 10);
-  
-  if (isNaN(hour24) || hour24 < 1 || hour24 > 12) {
-    throw new Error('Invalid hour value for 12-hour format');
-  }
-  
-  const normalizedModifier = modifier.toUpperCase();
-  
-  if (normalizedModifier === 'AM') {
-    if (hour24 === 12) {
-      hour24 = 0; // 12 AM = 00:xx
-    }
-  } else if (normalizedModifier === 'PM') {
-    if (hour24 !== 12) {
-      hour24 += 12; // 1 PM = 13:xx, but 12 PM stays 12:xx
-    }
-  } else {
-    throw new Error(`Invalid AM/PM modifier: "${modifier}"`);
-  }
-  
-  return `${hour24.toString().padStart(2, '0')}:${minutes}:00`;
+// Enhanced task interface for Kanban board
+export interface KanbanTask extends Task {
+  status: string; // Changed to string to support dynamic column IDs
+  priority: 'high' | 'medium' | 'low';
 }
 
 // Insert a new task
 export async function createTask(taskData: Omit<NewTask, 'id' | 'createdAt' | 'updatedAt'>): Promise<Task> {
   try {
-    const [newTask] = await db.insert(tasks).values({
-      text: taskData.text,
-      date: taskData.date,
-      time: normalizeTime(taskData.time), 
+    const [newTask] = await db.insert(task).values({
+      id: nanoid(), // Generate a unique ID
+      title: taskData.title,
+      description: taskData.description,
+      dueDate: taskData.dueDate,
+      teamId: taskData.teamId,
+      projectName: taskData.projectName,
+      userId: taskData.userId,
     }).returning();
     
     return newTask;
@@ -86,10 +39,51 @@ export async function createTask(taskData: Omit<NewTask, 'id' | 'createdAt' | 'u
   }
 }
 
+export async function createKanbanTask(taskData: {
+  title: string;
+  description?: string;
+  dueDate?: Date;
+  teamId: string;
+  projectName?: string;
+  userId?: string;
+  status: string; // Changed to string to support dynamic column IDs
+  priority: 'high' | 'medium' | 'low';
+}): Promise<Task> {
+  try {
+    // Combine description with status and priority metadata
+    const fullDescription = `${taskData.description || ''}\nStatus: ${taskData.status}\nPriority: ${taskData.priority}`.trim();
+    
+    const [newTask] = await db.insert(task).values({
+      id: nanoid(), // Generate a unique ID
+      title: taskData.title,
+      description: fullDescription,
+      dueDate: taskData.dueDate,
+      teamId: taskData.teamId,
+      projectName: taskData.projectName,
+      userId: taskData.userId,
+    }).returning();
+    
+    return newTask;
+  } catch (error) {
+    console.error('Error creating Kanban task:', error);
+    throw new Error('Failed to create Kanban task');
+  }
+}
+
+export async function getTasksByTeam(teamId: string): Promise<Task[]> {
+  try {
+    const allTasks = await db.select().from(task).where(eq(task.teamId, teamId));
+    return allTasks;
+  } catch (error) {
+    console.error('Error fetching tasks:', error);
+    throw new Error('Failed to fetch tasks');
+  }
+}
+
 // Get all tasks
 export async function getAllTasks(): Promise<Task[]> {
   try {
-    const allTasks = await db.select().from(tasks);
+    const allTasks = await db.select().from(task);
     return allTasks;
   } catch (error) {
     console.error('Error fetching tasks:', error);
@@ -98,21 +92,17 @@ export async function getAllTasks(): Promise<Task[]> {
 }
 
 // Update a task
-export async function updateTask(id: number, taskData: Partial<Omit<NewTask, 'id' | 'createdAt'>>): Promise<Task | null> {
+export async function updateTask(id: string, taskData: Partial<Omit<NewTask, 'id' | 'createdAt'>>): Promise<Task | null> {
   try {
-    const updateData: Partial<Omit<NewTask, 'id' | 'createdAt'>> & { updatedAt: Date; time?: string } = { 
+    const updateData: Partial<Omit<NewTask, 'id' | 'createdAt'>> & { updatedAt: Date } = { 
       ...taskData, 
       updatedAt: new Date() 
     };
     
-    if (taskData.time) {
-      updateData.time = normalizeTime(taskData.time);
-    }
-    
     const [updatedTask] = await db
-      .update(tasks)
+      .update(task)
       .set(updateData)
-      .where(eq(tasks.id, id))
+      .where(eq(task.id, id))
       .returning();
     
     return updatedTask || null;
@@ -122,10 +112,42 @@ export async function updateTask(id: number, taskData: Partial<Omit<NewTask, 'id
   }
 }
 
-// Delete a task
-export async function deleteTask(id: number): Promise<boolean> {
+
+export async function updateTaskStatus(id: string, status: string): Promise<Task | null> {
   try {
-    const result = await db.delete(tasks).where(eq(tasks.id, id));
+    const currentTask = await getTaskById(id);
+    if (!currentTask) return null;
+    
+
+    const priorityMatch = currentTask.description?.match(/Priority: (high|medium|low)/);
+    const priority = priorityMatch?.[1] || 'medium';
+    
+
+    const cleanDescription = currentTask.description?.replace(/Status:.*Priority:.*/, '').trim() || '';
+    
+
+    const newDescription = `${cleanDescription}\nStatus: ${status}\nPriority: ${priority}`.trim();
+    
+    const [updatedTask] = await db
+      .update(task)
+      .set({ 
+        updatedAt: new Date(),
+        description: newDescription
+      })
+      .where(eq(task.id, id))
+      .returning();
+    
+    return updatedTask || null;
+  } catch (error) {
+    console.error('Error updating task status:', error);
+    throw new Error('Failed to update task status');
+  }
+}
+
+
+export async function deleteTask(id: string): Promise<boolean> {
+  try {
+    const result = await db.delete(task).where(eq(task.id, id));
     return result.rowCount! > 0;
   } catch (error) {
     console.error('Error deleting task:', error);
@@ -133,11 +155,11 @@ export async function deleteTask(id: number): Promise<boolean> {
   }
 }
 
-// Get a single task by ID
-export async function getTaskById(id: number): Promise<Task | null> {
+
+export async function getTaskById(id: string): Promise<Task | null> {
   try {
-    const [task] = await db.select().from(tasks).where(eq(tasks.id, id));
-    return task || null;
+    const [taskItem] = await db.select().from(task).where(eq(task.id, id));
+    return taskItem || null;
   } catch (error) {
     console.error('Error fetching task:', error);
     throw new Error('Failed to fetch task');

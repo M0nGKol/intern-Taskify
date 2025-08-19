@@ -80,3 +80,5 @@ export const task = pgTable("task", {
   });
 
 export const schema = { user, session, account, verification, task };
+export type Task = typeof task.$inferSelect;
+export type NewTask = typeof task.$inferInsert;

@@ -28,14 +28,57 @@ import { useState } from "react";
 interface CreateTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCreateTask?: (taskData: {
+    title: string;
+    description?: string;
+    dueDate?: Date;
+    priority: "high" | "medium" | "low";
+  }) => void;
 }
 
-export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
+export function CreateTaskModal({
+  isOpen,
+  onClose,
+  onCreateTask,
+}: CreateTaskModalProps) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+  const [selectedTime, setSelectedTime] = useState<string>("");
+  const [priority, setPriority] = useState<"high" | "medium" | "low">("medium");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleClose = () => {
+    setTitle("");
+    setDescription("");
     setSelectedDate(undefined);
+    setSelectedTime("");
+    setPriority("medium");
+    setIsSubmitting(false);
     onClose();
+  };
+
+  const handleSubmit = async () => {
+    if (!title.trim()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await onCreateTask?.({
+        title: title.trim(),
+        description: description.trim() || undefined,
+        dueDate: selectedDate,
+        priority,
+      });
+
+      handleClose();
+    } catch (error) {
+      console.error("Error creating task:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -53,20 +96,30 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
             <label className="text-sm font-medium text-gray-700">
               Title<span className="text-red-500">*</span>
             </label>
-            <Input placeholder="Enter task title" className="w-full" />
+            <Input
+              placeholder="Enter task title"
+              className="w-full"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
           </div>
 
           <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">
+              Description
+            </label>
             <Textarea
               placeholder="Description..."
               className="min-h-[120px] resize-none"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">
-                Due Date<span className="text-red-500">*</span>
+                Due Date
               </label>
               <Popover modal>
                 <PopoverTrigger asChild>
@@ -94,10 +147,8 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
-                Time<span className="text-red-500">*</span>
-              </label>
-              <Select>
+              <label className="text-sm font-medium text-gray-700">Time</label>
+              <Select value={selectedTime} onValueChange={setSelectedTime}>
                 <SelectTrigger>
                   <div className="flex items-center space-x-2">
                     <Clock className="w-4 h-4 text-gray-400" />
@@ -119,7 +170,12 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
             <label className="text-sm font-medium text-gray-700">
               Priority<span className="text-red-500">*</span>
             </label>
-            <Select>
+            <Select
+              value={priority}
+              onValueChange={(value: "high" | "medium" | "low") =>
+                setPriority(value)
+              }
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select priority" />
                 <ChevronDown className="w-4 h-4" />
@@ -138,9 +194,17 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
               <span>Assign to</span>
             </div>
 
-            <Button className="bg-blue-400 hover:bg-blue-500 text-white px-8 py-2 rounded-lg flex items-center space-x-2">
-              <span>✓</span>
-              <span>Complete Task</span>
+            <Button
+              className="bg-blue-400 hover:bg-blue-500 text-white px-8 py-2 rounded-lg flex items-center space-x-2"
+              onClick={handleSubmit}
+              disabled={!title.trim() || isSubmitting}
+            >
+              {isSubmitting ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              ) : (
+                <span>✓</span>
+              )}
+              <span>{isSubmitting ? "Creating..." : "Create Task"}</span>
             </Button>
           </div>
         </div>
