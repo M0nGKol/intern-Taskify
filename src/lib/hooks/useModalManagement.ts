@@ -3,11 +3,11 @@ import { useState } from "react";
 export function useModalManagement() {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState<"opens" | "in-progress" | "evaluation" | "done">("opens");
+  const [selectedStatus, setSelectedStatus] = useState<string>("opens");
   const [selectedTask, setSelectedTask] = useState<any>(null);
   
 
-  const openCreateTaskModal = (status?: "opens" | "in-progress" | "evaluation" | "done") => {
+  const openCreateTaskModal = (status?: string) => {
     if (status) {
       setSelectedStatus(status);
     }

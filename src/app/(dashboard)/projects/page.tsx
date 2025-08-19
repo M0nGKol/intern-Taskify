@@ -98,13 +98,7 @@ export default function TasksPage() {
   };
 
   const handleDropTask = async (e: React.DragEvent, targetStatus: string) => {
-    if (["opens", "in-progress", "evaluation", "done"].includes(targetStatus)) {
-      await handleDrop(
-        e,
-        targetStatus as "opens" | "in-progress" | "evaluation" | "done",
-        updateTaskStatusById
-      );
-    }
+    await handleDrop(e, targetStatus, updateTaskStatusById);
   };
 
   const handleCreateColumn = (columnData: {
@@ -255,19 +249,7 @@ export default function TasksPage() {
 
                 <Button
                   onClick={() => {
-                    if (
-                      ["opens", "in-progress", "evaluation", "done"].includes(
-                        column.id
-                      )
-                    ) {
-                      openCreateTaskModal(
-                        column.id as
-                          | "opens"
-                          | "in-progress"
-                          | "evaluation"
-                          | "done"
-                      );
-                    }
+                    openCreateTaskModal(column.id);
                   }}
                   className="w-full bg-primary text-white py-3 rounded-lg flex items-center justify-center space-x-2"
                 >

@@ -21,7 +21,7 @@ export interface Task {
   createdAt: Date;
   updatedAt: Date;
   priority: "high" | "medium" | "low";
-  status: "opens" | "in-progress" | "evaluation" | "done";
+  status: string;
 }
 
 export function useTaskManagement() {
@@ -34,10 +34,9 @@ export function useTaskManagement() {
     description?: string | null
   ): Task["status"] => {
     if (!description) return "opens";
-    const statusMatch = description.match(
-      /Status: (opens|in-progress|evaluation|done)/
-    );
-    return (statusMatch?.[1] as Task["status"]) || "opens";
+    const statusMatch = description.match(/Status:\s*([^\n\r]+)/);
+    const extractedStatus = statusMatch?.[1]?.trim();
+    return extractedStatus || "opens";
   };
 
   const extractPriorityFromDescription = (
@@ -102,14 +101,21 @@ export function useTaskManagement() {
     if (!teamId) return;
 
     try {
-      await createKanbanTask({
+      const newTask = await createKanbanTask({
         ...taskData,
         teamId,
         projectName,
         status: taskData.status || "opens",
       });
 
-      await fetchTasks();
+      // Add the new task to the current state instead of refetching all
+      const kanbanTask: Task = {
+        ...newTask,
+        status: taskData.status || "opens",
+        priority: taskData.priority,
+      };
+      
+      setTasks(prevTasks => [...prevTasks, kanbanTask]);
       toast.success("Task created successfully");
       return true;
     } catch (error) {
@@ -138,7 +144,22 @@ export function useTaskManagement() {
         dueDate: taskData.dueDate,
       });
 
-      await fetchTasks();
+      // Update the task in the current state instead of refetching all
+      setTasks(prevTasks => 
+        prevTasks.map(task => 
+          task.id === taskId 
+            ? { 
+                ...task, 
+                title: taskData.title,
+                description: taskData.description,
+                dueDate: taskData.dueDate,
+                priority: taskData.priority,
+                status: currentStatus
+              }
+            : task
+        )
+      );
+      
       toast.success("Task updated successfully");
       return true;
     } catch (error) {
@@ -151,7 +172,10 @@ export function useTaskManagement() {
   const deleteTaskById = async (taskId: string) => {
     try {
       await deleteTask(taskId);
-      await fetchTasks();
+      
+      // Remove the task from the current state instead of refetching all
+      setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+      
       toast.success("Task deleted successfully");
       return true;
     } catch (error) {
@@ -166,13 +190,23 @@ export function useTaskManagement() {
     newStatus: Task["status"]
   ) => {
     try {
+      // Optimistic update - update UI immediately
+      setTasks(prevTasks => 
+        prevTasks.map(task => 
+          task.id === taskId 
+            ? { ...task, status: newStatus }
+            : task
+        )
+      );
+
       await updateTaskStatus(taskId, newStatus);
-      await fetchTasks();
       toast.success("Task status updated");
       return true;
     } catch (error) {
       console.error("Error updating task status:", error);
       toast.error("Failed to update task status");
+      // Revert optimistic update on error
+      await fetchTasks();
       return false;
     }
   };

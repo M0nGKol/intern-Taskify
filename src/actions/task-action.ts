@@ -123,7 +123,7 @@ export async function updateTaskStatus(id: string, status: string): Promise<Task
     const priority = priorityMatch?.[1] || 'medium';
     
 
-    const cleanDescription = currentTask.description?.replace(/Status:.*Priority:.*/, '').trim() || '';
+    const cleanDescription = currentTask.description?.replace(/Status:.*Priority:.*/g, '').trim() || '';
     
 
     const newDescription = `${cleanDescription}\nStatus: ${status}\nPriority: ${priority}`.trim();
