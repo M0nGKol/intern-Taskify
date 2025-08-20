@@ -21,13 +21,8 @@ import {
 interface CreateColumnModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateColumn: (columnData: {
-    title: string;
-    icon: string;
-    color: string;
-  }) => void;
+  onCreateColumn: (columnData: { title: string; color: string }) => void;
   colorOptions: string[];
-  iconOptions: string[];
 }
 
 export function CreateColumnModal({
@@ -35,10 +30,8 @@ export function CreateColumnModal({
   onClose,
   onCreateColumn,
   colorOptions,
-  iconOptions,
 }: CreateColumnModalProps) {
   const [title, setTitle] = useState("");
-  const [selectedIcon, setSelectedIcon] = useState(iconOptions[0]);
   const [selectedColor, setSelectedColor] = useState(colorOptions[0]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -47,19 +40,16 @@ export function CreateColumnModal({
 
     onCreateColumn({
       title: title.trim(),
-      icon: selectedIcon,
       color: selectedColor,
     });
 
     // Reset form
     setTitle("");
-    setSelectedIcon(iconOptions[0]);
     setSelectedColor(colorOptions[0]);
   };
 
   const handleClose = () => {
     setTitle("");
-    setSelectedIcon(iconOptions[0]);
     setSelectedColor(colorOptions[0]);
     onClose();
   };
@@ -83,25 +73,6 @@ export function CreateColumnModal({
               placeholder="Enter column title..."
               required
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="icon">Icon</Label>
-            <Select value={selectedIcon} onValueChange={setSelectedIcon}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {iconOptions.map((icon) => (
-                  <SelectItem key={icon} value={icon}>
-                    <span className="flex items-center space-x-2">
-                      <span>{icon}</span>
-                      <span className="text-sm text-gray-500">({icon})</span>
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
 
           <div className="space-y-2">

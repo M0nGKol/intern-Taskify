@@ -12,6 +12,13 @@ import { useTaskManagement, Task } from "@/lib/hooks/useTaskManagement";
 import { useColumnManagement, Column } from "@/lib/hooks/useColumnManagement";
 import { useDragAndDrop } from "@/lib/hooks/useDragAndDrop";
 import { useModalManagement } from "@/lib/hooks/useModalManagement";
+import { usePersistentProjectState } from "@/lib/hooks/usePersistentProjectState";
+import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export default function TasksPage() {
   const {
@@ -33,7 +40,6 @@ export default function TasksPage() {
     updateColumn,
     deleteColumn,
     colorOptions,
-    iconOptions,
   } = useColumnManagement();
 
   const {
@@ -59,6 +65,25 @@ export default function TasksPage() {
   } = useModalManagement();
 
   const [isColumnModalOpen, setIsColumnModalOpen] = React.useState(false);
+
+  const { setProject, teamId } = usePersistentProjectState();
+  const [projectQuery, setProjectQuery] = React.useState("");
+
+  const projectOptions = React.useMemo(() => {
+    const names = Array.from(
+      new Set(tasks.map((t) => t.projectName).filter((n): n is string => !!n))
+    );
+    if (projectName && !names.includes(projectName)) names.unshift(projectName);
+    return names;
+  }, [tasks, projectName]);
+
+  const filteredProjects = React.useMemo(
+    () =>
+      projectOptions.filter((n) =>
+        n.toLowerCase().includes(projectQuery.toLowerCase())
+      ),
+    [projectOptions, projectQuery]
+  );
 
   const handleCreateTask = async (taskData: {
     title: string;
@@ -101,11 +126,7 @@ export default function TasksPage() {
     await handleDrop(e, targetStatus, updateTaskStatusById);
   };
 
-  const handleCreateColumn = (columnData: {
-    title: string;
-    icon: string;
-    color: string;
-  }) => {
+  const handleCreateColumn = (columnData: { title: string; color: string }) => {
     createColumn(columnData);
     setIsColumnModalOpen(false);
   };
@@ -132,6 +153,39 @@ export default function TasksPage() {
                 {projectName}
               </div>
             )}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="text-sm">
+                  Switch Project
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-72">
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Search projects..."
+                    value={projectQuery}
+                    onChange={(e) => setProjectQuery(e.target.value)}
+                  />
+                  <div className="max-h-64 overflow-y-auto space-y-1">
+                    {filteredProjects.length === 0 ? (
+                      <div className="text-sm text-gray-500 px-1 py-2">
+                        No projects
+                      </div>
+                    ) : (
+                      filteredProjects.map((name) => (
+                        <button
+                          key={name}
+                          className="w-full text-left px-2 py-2 rounded hover:bg-gray-100 text-sm"
+                          onClick={() => setProject(name, teamId || "")}
+                        >
+                          {name}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button variant="ghost" size="icon">
               <Settings className="w-5 h-5" />
             </Button>
@@ -154,7 +208,6 @@ export default function TasksPage() {
                 className={`${column.color} text-white px-4 py-3 rounded-t-lg flex items-center justify-between`}
               >
                 <div className="flex items-center space-x-2">
-                  <span>{column.icon}</span>
                   <span className="font-medium">{column.title}</span>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -279,14 +332,6 @@ export default function TasksPage() {
         </div>
       </div>
 
-      <Button
-        onClick={() => openCreateTaskModal()}
-        className="fixed bottom-8 right-8 w-14 h-14 rounded-full bg-slate-800 hover:bg-slate-700 text-white shadow-lg"
-        size="icon"
-      >
-        <Plus className="w-6 h-6" />
-      </Button>
-
       <CreateTaskModal
         isOpen={isTaskModalOpen}
         onClose={closeCreateTaskModal}
@@ -303,7 +348,6 @@ export default function TasksPage() {
         onClose={() => setIsColumnModalOpen(false)}
         onCreateColumn={handleCreateColumn}
         colorOptions={colorOptions}
-        iconOptions={iconOptions}
       />
     </div>
   );

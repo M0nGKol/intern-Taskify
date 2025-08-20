@@ -4,7 +4,7 @@ import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { task, NewTask, Task } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
 const pool = new Pool({
@@ -13,13 +13,12 @@ const pool = new Pool({
 
 const db = drizzle(pool);
 
-// Enhanced task interface for Kanban board
 export interface KanbanTask extends Task {
-  status: string; // Changed to string to support dynamic column IDs
+  status: string;
   priority: 'high' | 'medium' | 'low';
 }
 
-// Insert a new task
+
 export async function createTask(taskData: Omit<NewTask, 'id' | 'createdAt' | 'updatedAt'>): Promise<Task> {
   try {
     const [newTask] = await db.insert(task).values({
@@ -46,23 +45,21 @@ export async function createKanbanTask(taskData: {
   teamId: string;
   projectName?: string;
   userId?: string;
-  status: string; // Changed to string to support dynamic column IDs
+  status: string;
   priority: 'high' | 'medium' | 'low';
 }): Promise<Task> {
   try {
-    // Combine description with status and priority metadata
-    const fullDescription = `${taskData.description || ''}\nStatus: ${taskData.status}\nPriority: ${taskData.priority}`.trim();
-    
     const [newTask] = await db.insert(task).values({
-      id: nanoid(), // Generate a unique ID
+      id: nanoid(),
       title: taskData.title,
-      description: fullDescription,
+      description: taskData.description,
       dueDate: taskData.dueDate,
       teamId: taskData.teamId,
       projectName: taskData.projectName,
       userId: taskData.userId,
+      status: taskData.status,
     }).returning();
-    
+
     return newTask;
   } catch (error) {
     console.error('Error creating Kanban task:', error);
@@ -80,7 +77,6 @@ export async function getTasksByTeam(teamId: string): Promise<Task[]> {
   }
 }
 
-// Get all tasks
 export async function getAllTasks(): Promise<Task[]> {
   try {
     const allTasks = await db.select().from(task);
@@ -91,7 +87,6 @@ export async function getAllTasks(): Promise<Task[]> {
   }
 }
 
-// Update a task
 export async function updateTask(id: string, taskData: Partial<Omit<NewTask, 'id' | 'createdAt'>>): Promise<Task | null> {
   try {
     const updateData: Partial<Omit<NewTask, 'id' | 'createdAt'>> & { updatedAt: Date } = { 
@@ -111,32 +106,17 @@ export async function updateTask(id: string, taskData: Partial<Omit<NewTask, 'id
     throw new Error('Failed to update task');
   }
 }
-
-
 export async function updateTaskStatus(id: string, status: string): Promise<Task | null> {
   try {
-    const currentTask = await getTaskById(id);
-    if (!currentTask) return null;
-    
-
-    const priorityMatch = currentTask.description?.match(/Priority: (high|medium|low)/);
-    const priority = priorityMatch?.[1] || 'medium';
-    
-
-    const cleanDescription = currentTask.description?.replace(/Status:.*Priority:.*/g, '').trim() || '';
-    
-
-    const newDescription = `${cleanDescription}\nStatus: ${status}\nPriority: ${priority}`.trim();
-    
     const [updatedTask] = await db
       .update(task)
-      .set({ 
+      .set({
+        status,           
         updatedAt: new Date(),
-        description: newDescription
       })
       .where(eq(task.id, id))
       .returning();
-    
+
     return updatedTask || null;
   } catch (error) {
     console.error('Error updating task status:', error);

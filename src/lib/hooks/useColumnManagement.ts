@@ -4,22 +4,20 @@ import { toast } from "sonner";
 export interface Column {
   id: string;
   title: string;
-  icon: string;
   color: string;
   order: number;
 }
 
 const defaultColumns: Column[] = [
-  { id: "opens", title: "Opens", icon: "○", color: "bg-slate-600", order: 0 },
+  { id: "opens", title: "Opens", color: "bg-slate-600", order: 0 },
   {
     id: "in-progress",
     title: "In Progress",
-    icon: "◐",
     color: "bg-blue-600",
     order: 1,
   },
-  { id: "evaluation", title: "Evaluation", icon: "◑", color: "bg-teal-600", order: 2 },
-  { id: "done", title: "Done", icon: "✓", color: "bg-green-600", order: 3 },
+  { id: "evaluation", title: "Evaluation", color: "bg-teal-600", order: 2 },
+  { id: "done", title: "Done", color: "bg-green-600", order: 3 },
 ];
 
 const colorOptions = [
@@ -35,7 +33,6 @@ const colorOptions = [
   "bg-cyan-600",
 ];
 
-const iconOptions = ["○", "◐", "◑", "✓", "●", "◆", "★", "⚡", "🔥", "💡"];
 
 export function useColumnManagement() {
   const [columns, setColumns] = useState<Column[]>([]);
@@ -66,13 +63,11 @@ export function useColumnManagement() {
 
   const createColumn = (columnData: {
     title: string;
-    icon?: string;
     color?: string;
   }) => {
     const newColumn: Column = {
       id: `column-${Date.now()}`,
       title: columnData.title,
-      icon: columnData.icon || iconOptions[Math.floor(Math.random() * iconOptions.length)],
       color: columnData.color || colorOptions[Math.floor(Math.random() * colorOptions.length)],
       order: columns.length,
     };
@@ -138,6 +133,5 @@ export function useColumnManagement() {
     reorderColumns,
     getColumnById,
     colorOptions,
-    iconOptions,
   };
 }

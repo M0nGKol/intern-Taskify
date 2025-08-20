@@ -30,11 +30,16 @@ export default function LoginForm() {
         email,
         password,
       });
+
       await refreshAuth();
       toast.success("Signed in successfully");
       router.push("/dashboard");
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("An unexpected error occurred");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -49,11 +54,16 @@ export default function LoginForm() {
         provider: "google",
         callbackURL: `${window.location.origin}/dashboard`,
       });
+
       await refreshAuth();
       toast.success("Signed in successfully");
       router.push("/dashboard");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to sign in with Google");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        toast.error(err.message || "Failed to sign in with Google");
+      } else {
+        toast.error("Failed to sign in with Google");
+      }
       setIsGoogleLoading(false);
     }
   };

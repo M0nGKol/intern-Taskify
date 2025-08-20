@@ -67,17 +67,18 @@ export const verification = pgTable("verification", {
 });
 
 export const task = pgTable("task", {
-    id: text("id").primaryKey(),
-    title: text("title").notNull(),
-    description: text("description"),
-    dueDate: timestamp("due_date"),
-    completed: boolean("completed").$defaultFn(() => false).notNull(),
-    teamId: text("team_id").notNull(),         
-    projectName: text("project_name"),        
-    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
-    createdAt: timestamp("created_at").$defaultFn(() => new Date()).notNull(),
-    updatedAt: timestamp("updated_at").$defaultFn(() => new Date()).notNull(),
-  });
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  dueDate: timestamp("due_date"),
+  completed: boolean("completed").$defaultFn(() => false).notNull(),
+  teamId: text("team_id").notNull(),
+  projectName: text("project_name"),
+  status: text("status").notNull().default('opens'),
+  userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").$defaultFn(() => new Date()).notNull(),
+  updatedAt: timestamp("updated_at").$defaultFn(() => new Date()).notNull(),
+});
 
 export const schema = { user, session, account, verification, task };
 export type Task = typeof task.$inferSelect;

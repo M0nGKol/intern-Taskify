@@ -6,7 +6,7 @@ export default defineConfig({
   out: './drizzle',
   dialect: 'postgresql',
   dbCredentials: {
-    url: env.DATABASE_URL || 'postgresql://username:password@localhost:5432/taskify',
+    url: env.DATABASE_URL as string,
   },
   verbose: true,
   strict: true,

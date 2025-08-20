@@ -29,7 +29,6 @@ export function useTaskManagement() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Helper functions to extract status and priority from description
   const extractStatusFromDescription = (
     description?: string | null
   ): Task["status"] => {
