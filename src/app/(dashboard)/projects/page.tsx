@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { CreateTaskModal } from "@/components/modals/create-task-modal";
 import { EditTaskModal } from "@/components/modals/edit-task-modal";
 import { CreateColumnModal } from "@/components/modals/create-column-modal";
-import { useTaskManagement, Task } from "@/lib/hooks/useTaskManagement";
+import { useTaskManagement } from "@/lib/hooks/useTaskManagement";
 import { useColumnManagement, Column } from "@/lib/hooks/useColumnManagement";
 import { useDragAndDrop } from "@/lib/hooks/useDragAndDrop";
 import { useModalManagement } from "@/lib/hooks/useModalManagement";

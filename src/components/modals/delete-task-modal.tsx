@@ -7,60 +7,54 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2 } from "lucide-react";
+import { Trash2, AlertTriangle } from "lucide-react";
 
 interface DeleteTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onConfirm: () => void;
+  taskTitle: string;
 }
 
-export function DeleteTaskModal({ isOpen, onClose }: DeleteTaskModalProps) {
+export function DeleteTaskModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  taskTitle,
+}: DeleteTaskModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-lg font-semibold">
+          <DialogTitle className="text-lg font-semibold flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-red-500" />
             Delete Task
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-sm font-medium">Due Date:</span>
-              <span className="text-sm text-gray-600">dd/mm/yyyy</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm font-medium">Priority:</span>
-              <span className="text-sm text-gray-600">-</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm font-medium">Status:</span>
-              <span className="text-sm text-gray-600">-</span>
-            </div>
-          </div>
-
-          <div>
-            <h4 className="text-sm font-medium mb-2">Description</h4>
-            <p className="text-sm text-gray-600">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-              eiusmod tempor incididunt ut labore et dolore magna aliqua.
+          <div className="text-center">
+            <p className="text-sm text-gray-600 mb-2">
+              Are you sure you want to delete this task?
+            </p>
+            <p className="text-sm font-medium text-gray-900">"{taskTitle}"</p>
+            <p className="text-xs text-gray-500 mt-2">
+              This action cannot be undone.
             </p>
           </div>
         </div>
 
         <div className="flex justify-end gap-3 pt-4">
-          <Button variant="outline" className="flex items-center gap-2">
-            <Edit className="w-4 h-4" />
-            Edit
+          <Button variant="outline" onClick={onClose}>
+            Cancel
           </Button>
           <Button
             variant="destructive"
             className="bg-red-500 hover:bg-red-600 flex items-center gap-2"
-            onClick={onClose}
+            onClick={onConfirm}
           >
             <Trash2 className="w-4 h-4" />
-            Delete
+            Delete Task
           </Button>
         </div>
       </DialogContent>

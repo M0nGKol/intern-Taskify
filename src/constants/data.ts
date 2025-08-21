@@ -81,3 +81,17 @@ export interface Testimonial {
       icon: CalendarDays,
     },
   ];
+  export interface Task {
+    id: string;
+    title: string;
+    description?: string | null;
+    dueDate?: Date | null;
+    completed?: boolean;
+    teamId: string;
+    projectName?: string | null;
+    userId?: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    priority: "high" | "medium" | "low";
+    status: string;
+  }

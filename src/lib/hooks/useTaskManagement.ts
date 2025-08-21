@@ -8,21 +8,7 @@ import {
   updateTask,
 } from "@/actions/task-action";
 import { usePersistentProjectState } from "@/lib/hooks/usePersistentProjectState";
-
-export interface Task {
-  id: string;
-  title: string;
-  description?: string | null;
-  dueDate?: Date | null;
-  completed?: boolean;
-  teamId: string;
-  projectName?: string | null;
-  userId?: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  priority: "high" | "medium" | "low";
-  status: string;
-}
+import { Task } from "@/constants/data";
 
 export function useTaskManagement() {
   const { teamId, projectName } = usePersistentProjectState();
@@ -77,7 +63,8 @@ export function useTaskManagement() {
       // Convert database tasks to Kanban format
       const kanbanTasks: Task[] = fetchedTasks.map((task) => ({
         ...task,
-        status: extractStatusFromDescription(task.description) || "opens",
+        // Use the actual status field from database, fallback to description extraction for legacy tasks
+        status: task.status || extractStatusFromDescription(task.description) || "opens",
         priority: extractPriorityFromDescription(task.description) || "medium",
       }));
 
@@ -141,6 +128,7 @@ export function useTaskManagement() {
         title: taskData.title,
         description: updatedDescription,
         dueDate: taskData.dueDate,
+        status: currentStatus, // Also update the status field
       });
 
       // Update the task in the current state instead of refetching all

@@ -44,7 +44,7 @@ export function CreateTaskModal({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
-  const [selectedTime, setSelectedTime] = useState<string>("");
+  const [selectedTime, setSelectedTime] = useState<string>("09:00"); // 24h default
   const [priority, setPriority] = useState<"high" | "medium" | "low">("medium");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -52,24 +52,31 @@ export function CreateTaskModal({
     setTitle("");
     setDescription("");
     setSelectedDate(undefined);
-    setSelectedTime("");
+    setSelectedTime("09:00");
     setPriority("medium");
     setIsSubmitting(false);
     onClose();
   };
 
   const handleSubmit = async () => {
-    if (!title.trim()) {
-      return;
-    }
+    if (!title.trim()) return;
 
     setIsSubmitting(true);
-
     try {
+      let composedDueDate: Date | undefined = undefined;
+      if (selectedDate) {
+        const [h, m] = (selectedTime || "09:00")
+          .split(":")
+          .map((v) => parseInt(v, 10));
+        const d = new Date(selectedDate);
+        d.setHours(isNaN(h) ? 9 : h, isNaN(m) ? 0 : m, 0, 0); // store as local 24h
+        composedDueDate = d;
+      }
+
       await onCreateTask?.({
         title: title.trim(),
         description: description.trim() || undefined,
-        dueDate: selectedDate,
+        dueDate: composedDueDate,
         priority,
       });
 
@@ -147,22 +154,18 @@ export function CreateTaskModal({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Time</label>
-              <Select value={selectedTime} onValueChange={setSelectedTime}>
-                <SelectTrigger>
-                  <div className="flex items-center space-x-2">
-                    <Clock className="w-4 h-4 text-gray-400" />
-                    <SelectValue placeholder="Select time" />
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="09:00">09:00 AM</SelectItem>
-                  <SelectItem value="10:00">10:00 AM</SelectItem>
-                  <SelectItem value="11:00">11:00 AM</SelectItem>
-                  <SelectItem value="14:00">02:00 PM</SelectItem>
-                  <SelectItem value="15:00">03:00 PM</SelectItem>
-                </SelectContent>
-              </Select>
+              <label className="text-sm font-medium text-gray-700">
+                Time (24h)
+              </label>
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-gray-400" />
+                <Input
+                  type="time"
+                  step={300}
+                  value={selectedTime}
+                  onChange={(e) => setSelectedTime(e.target.value)}
+                />
+              </div>
             </div>
           </div>
 

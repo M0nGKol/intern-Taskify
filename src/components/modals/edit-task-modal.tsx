@@ -59,10 +59,10 @@ export function EditTaskModal({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState<Date | undefined>();
+  const [selectedTime, setSelectedTime] = useState<string>("09:00"); // 24h
   const [priority, setPriority] = useState<"high" | "medium" | "low">("medium");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Extract priority from description
   const extractPriorityFromDescription = (
     description?: string
   ): "high" | "medium" | "low" => {
@@ -71,7 +71,6 @@ export function EditTaskModal({
     return (priorityMatch?.[1] as "high" | "medium" | "low") || "medium";
   };
 
-  // Extract clean description (without status and priority metadata)
   const extractCleanDescription = (description?: string): string => {
     if (!description) return "";
     return description.replace(/Status:.*Priority:.*/, "").trim();
@@ -83,6 +82,16 @@ export function EditTaskModal({
       setDescription(extractCleanDescription(task.description));
       setDueDate(task.dueDate);
       setPriority(extractPriorityFromDescription(task.description));
+
+      // preload time in 24h (HH:mm)
+      if (task.dueDate) {
+        const d = new Date(task.dueDate);
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mm = String(d.getMinutes()).padStart(2, "0");
+        setSelectedTime(`${hh}:${mm}`);
+      } else {
+        setSelectedTime("09:00");
+      }
     }
   }, [task]);
 
@@ -90,23 +99,32 @@ export function EditTaskModal({
     setTitle("");
     setDescription("");
     setDueDate(undefined);
+    setSelectedTime("09:00");
     setPriority("medium");
     setIsSubmitting(false);
     onClose();
   };
 
   const handleSave = async () => {
-    if (!title.trim()) {
-      return;
-    }
+    if (!title.trim()) return;
 
     setIsSubmitting(true);
 
     try {
+      let composedDueDate: Date | undefined = undefined;
+      if (dueDate) {
+        const [h, m] = (selectedTime || "09:00")
+          .split(":")
+          .map((v) => parseInt(v, 10));
+        const d = new Date(dueDate);
+        d.setHours(isNaN(h) ? 9 : h, isNaN(m) ? 0 : m, 0, 0);
+        composedDueDate = d;
+      }
+
       await onUpdateTask?.({
         title: title.trim(),
         description: description.trim() || undefined,
-        dueDate,
+        dueDate: composedDueDate,
         priority,
       });
 
@@ -188,25 +206,38 @@ export function EditTaskModal({
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-600">
-                Priority<span className="text-red-500">*</span>
+                Time (24h)
               </label>
-              <Select
-                value={priority}
-                onValueChange={(value: "high" | "medium" | "low") =>
-                  setPriority(value)
-                }
-              >
-                <SelectTrigger className="rounded-xl border-slate-300">
-                  <SelectValue placeholder="Select priority" />
-                  <ChevronDown className="w-4 h-4" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="high">High Priority</SelectItem>
-                  <SelectItem value="medium">Medium Priority</SelectItem>
-                  <SelectItem value="low">Low Priority</SelectItem>
-                </SelectContent>
-              </Select>
+              <Input
+                type="time"
+                step={300}
+                value={selectedTime}
+                onChange={(e) => setSelectedTime(e.target.value)}
+                className="rounded-xl border-slate-300"
+              />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-600">
+              Priority<span className="text-red-500">*</span>
+            </label>
+            <Select
+              value={priority}
+              onValueChange={(value: "high" | "medium" | "low") =>
+                setPriority(value)
+              }
+            >
+              <SelectTrigger className="rounded-xl border-slate-300">
+                <SelectValue placeholder="Select priority" />
+                <ChevronDown className="w-4 h-4" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="high">High Priority</SelectItem>
+                <SelectItem value="medium">Medium Priority</SelectItem>
+                <SelectItem value="low">Low Priority</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <Button

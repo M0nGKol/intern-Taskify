@@ -5,6 +5,9 @@ import { Badge } from "../ui/badge";
 import { getTasksByTeam } from "@/actions/task-action";
 import { usePersistentProjectState } from "@/lib/hooks/usePersistentProjectState";
 import { toast } from "sonner";
+import { Button } from "../ui/button";
+import { CreateProjectModal } from "../modals/create-project-modal";
+import { JoinTeamModal } from "../modals/join-team-modal";
 
 interface Task {
   id: string;
@@ -23,9 +26,30 @@ interface HomePageProps {
 }
 
 export default function HomePage({ projectName }: HomePageProps) {
-  const { teamId } = usePersistentProjectState();
+  const { teamId, setProject } = usePersistentProjectState();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeModal, setActiveModal] = useState<string | null>(null);
+
+  const openCreateProject = () => setActiveModal("createProject");
+  const openJoinTeam = () => setActiveModal("joinTeam");
+  const closeModal = () => setActiveModal(null);
+
+  const handleProjectCreated = (payload: {
+    projectName: string;
+    teamId: string;
+  }) => {
+    setProject(payload.projectName, payload.teamId);
+    closeModal();
+  };
+
+  const handleProjectJoined = (payload: {
+    projectName: string;
+    teamId: string;
+  }) => {
+    setProject(payload.projectName, payload.teamId);
+    closeModal();
+  };
 
   const fetchTasks = async () => {
     if (!teamId) return;
@@ -91,6 +115,20 @@ export default function HomePage({ projectName }: HomePageProps) {
 
   return (
     <div className="px-4 md:px-8">
+      {/* Quick actions: Create or Join project */}
+      <div className="flex justify-end gap-3 py-3">
+        <Button
+          onClick={openCreateProject}
+          className="bg-blue-500 hover:bg-blue-600 text-white"
+          size="sm"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          New Project
+        </Button>
+        <Button variant="outline" size="sm" onClick={openJoinTeam}>
+          Join Existing
+        </Button>
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-[repeat(2,1fr)] gap-6 p-4 h-screen">
         {/* Tasks Section */}
         <Card className="border-2 border-slate-300 flex flex-col">
@@ -220,6 +258,22 @@ export default function HomePage({ projectName }: HomePageProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modals for project actions */}
+      {activeModal === "createProject" && (
+        <CreateProjectModal
+          isOpen={true}
+          onClose={closeModal}
+          onProjectCreated={handleProjectCreated}
+        />
+      )}
+      {activeModal === "joinTeam" && (
+        <JoinTeamModal
+          isOpen={true}
+          onClose={closeModal}
+          onProjectJoined={handleProjectJoined}
+        />
+      )}
     </div>
   );
 }
