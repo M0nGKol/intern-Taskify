@@ -18,6 +18,9 @@ import { CreateTaskModal } from "@/components/modals/create-task-modal";
 import { EditTaskModal } from "@/components/modals/edit-task-modal";
 import { DeleteTaskModal } from "@/components/modals/delete-task-modal";
 import { cn } from "@/lib/utils";
+import { usePersistentProjectState } from "@/lib/hooks/usePersistentProjectState";
+import { getProjectsByTeam } from "@/actions/project-action";
+import { TasksPageSkeleton } from "@/components/TasksPageSkeleton";
 
 export default function TasksPage() {
   const {
@@ -48,6 +51,35 @@ export default function TasksPage() {
     getWeekDates,
     getTasksForDate,
   } = useCalendar(tasks);
+
+  // Project switching
+  const { setProject, teamId, projectName } = usePersistentProjectState();
+  const [projectQuery, setProjectQuery] = useState("");
+  const [dbProjects, setDbProjects] = useState<string[]>([]);
+
+  React.useEffect(() => {
+    const load = async () => {
+      if (!teamId) return;
+      try {
+        const list = await getProjectsByTeam(teamId);
+        setDbProjects(list.map((p) => p.name));
+      } catch {}
+    };
+    load();
+  }, [teamId]);
+
+  const projectOptions = React.useMemo(() => {
+    const names = Array.from(new Set(dbProjects));
+    return names;
+  }, [dbProjects]);
+
+  const filteredProjects = React.useMemo(
+    () =>
+      projectOptions.filter((n) =>
+        n.toLowerCase().includes(projectQuery.toLowerCase())
+      ),
+    [projectOptions, projectQuery]
+  );
 
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -91,11 +123,7 @@ export default function TasksPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <TasksPageSkeleton />;
   }
 
   return (

@@ -60,6 +60,8 @@ export function CreateTaskModal({
 
   const handleSubmit = async () => {
     if (!title.trim()) return;
+    // Require due date and time
+    if (!selectedDate || !selectedTime) return;
 
     setIsSubmitting(true);
     try {
@@ -126,7 +128,7 @@ export function CreateTaskModal({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">
-                Due Date
+                Due Date<span className="text-red-500">*</span>
               </label>
               <Popover modal>
                 <PopoverTrigger asChild>
@@ -155,7 +157,7 @@ export function CreateTaskModal({
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">
-                Time (24h)
+                Time (24h)<span className="text-red-500">*</span>
               </label>
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-gray-400" />
@@ -200,7 +202,9 @@ export function CreateTaskModal({
             <Button
               className="bg-blue-400 hover:bg-blue-500 text-white px-8 py-2 rounded-lg flex items-center space-x-2"
               onClick={handleSubmit}
-              disabled={!title.trim() || isSubmitting}
+              disabled={
+                !title.trim() || !selectedDate || !selectedTime || isSubmitting
+              }
             >
               {isSubmitting ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>

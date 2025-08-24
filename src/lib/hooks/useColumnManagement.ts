@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { usePersistentProjectState } from "@/lib/hooks/usePersistentProjectState";
 
 export interface Column {
   id: string;
@@ -8,19 +9,14 @@ export interface Column {
   order: number;
 }
 
-const defaultColumns: Column[] = [
+export const defaultColumns: Column[] = [
   { id: "opens", title: "Opens", color: "bg-slate-600", order: 0 },
-  {
-    id: "in-progress",
-    title: "In Progress",
-    color: "bg-blue-600",
-    order: 1,
-  },
+  { id: "in-progress", title: "In Progress", color: "bg-blue-600", order: 1 },
   { id: "evaluation", title: "Evaluation", color: "bg-teal-600", order: 2 },
   { id: "done", title: "Done", color: "bg-green-600", order: 3 },
 ];
 
-const colorOptions = [
+export const colorOptions = [
   "bg-slate-600",
   "bg-blue-600",
   "bg-teal-600",
@@ -33,38 +29,40 @@ const colorOptions = [
   "bg-cyan-600",
 ];
 
+export const getColumnsStorageKey = (teamId?: string) =>
+  teamId ? `kanban-columns:${teamId}` : "kanban-columns";
 
 export function useColumnManagement() {
+  const { teamId } = usePersistentProjectState();
   const [columns, setColumns] = useState<Column[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load columns from localStorage on mount
+  // Load columns for current project (team) on mount and when team changes
   useEffect(() => {
-    const savedColumns = localStorage.getItem("kanban-columns");
+    if (typeof window === "undefined") return;
+    const key = getColumnsStorageKey(teamId);
+    const savedColumns = localStorage.getItem(key);
     if (savedColumns) {
       try {
         setColumns(JSON.parse(savedColumns));
-      } catch (error) {
-        console.error("Error parsing saved columns:", error);
+      } catch {
         setColumns(defaultColumns);
       }
     } else {
       setColumns(defaultColumns);
     }
     setIsLoading(false);
-  }, []);
+  }, [teamId]);
 
-  // Save columns to localStorage whenever they change
+  // Persist columns whenever they change (per team)
   useEffect(() => {
-    if (columns.length > 0) {
-      localStorage.setItem("kanban-columns", JSON.stringify(columns));
-    }
-  }, [columns]);
+    if (typeof window === "undefined") return;
+    if (columns.length === 0) return;
+    const key = getColumnsStorageKey(teamId);
+    localStorage.setItem(key, JSON.stringify(columns));
+  }, [columns, teamId]);
 
-  const createColumn = (columnData: {
-    title: string;
-    color?: string;
-  }) => {
+  const createColumn = (columnData: { title: string; color?: string }) => {
     const newColumn: Column = {
       id: `column-${Date.now()}`,
       title: columnData.title,
@@ -78,7 +76,7 @@ export function useColumnManagement() {
   };
 
   const updateColumn = (columnId: string, updates: Partial<Column>) => {
-    setColumns(columns.map(col => 
+    setColumns(columns.map(col =>
       col.id === columnId ? { ...col, ...updates } : col
     ));
     toast.success("Column updated successfully");
@@ -88,26 +86,21 @@ export function useColumnManagement() {
     const columnToDelete = columns.find(col => col.id === columnId);
     if (!columnToDelete) return;
 
-    // Don't allow deleting if it's one of the default columns
-    if (defaultColumns.some(defaultCol => defaultCol.id === columnId)) {
-      toast.error("Cannot delete default columns");
-      return;
-    }
-
-    setColumns(columns.filter(col => col.id !== columnId));
+    const remaining = columns.filter(col => col.id !== columnId);
+    const reindexed = remaining.map((col, idx) => ({ ...col, order: idx }));
+    setColumns(reindexed);
     toast.success(`Column "${columnToDelete.title}" deleted successfully`);
   };
 
   const reorderColumns = (columnId: string, newOrder: number) => {
     const updatedColumns = [...columns];
     const columnIndex = updatedColumns.findIndex(col => col.id === columnId);
-    
+
     if (columnIndex === -1) return;
 
     const [movedColumn] = updatedColumns.splice(columnIndex, 1);
     updatedColumns.splice(newOrder, 0, movedColumn);
 
-    // Update order property for all columns
     const reorderedColumns = updatedColumns.map((col, index) => ({
       ...col,
       order: index,
@@ -124,6 +117,15 @@ export function useColumnManagement() {
     return [...columns].sort((a, b) => a.order - b.order);
   };
 
+  const resetToDefaultColumns = () => {
+    setColumns(defaultColumns);
+    try {
+      const key = getColumnsStorageKey(teamId);
+      localStorage.setItem(key, JSON.stringify(defaultColumns));
+    } catch {}
+    toast.success("Columns reset to defaults");
+  };
+
   return {
     columns: getSortedColumns(),
     isLoading,
@@ -133,5 +135,6 @@ export function useColumnManagement() {
     reorderColumns,
     getColumnById,
     colorOptions,
+    resetToDefaultColumns,
   };
 }

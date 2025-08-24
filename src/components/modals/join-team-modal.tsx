@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getProjectByTeamId } from "@/actions/project-action";
 
 interface JoinTeamModalProps {
   isOpen: boolean;
@@ -24,11 +25,16 @@ export function JoinTeamModal({
 }: JoinTeamModalProps) {
   const [teamId, setTeamId] = useState("");
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const id = teamId.trim();
     if (id) {
-      onProjectJoined({ projectName: `Team ${id}`, teamId: id });
-      setTeamId(""); // Reset form
+      try {
+        const proj = await getProjectByTeamId(id);
+        if (proj) {
+          onProjectJoined({ projectName: proj.name, teamId: id });
+          setTeamId("");
+        }
+      } catch {}
     }
   };
 
@@ -40,13 +46,15 @@ export function JoinTeamModal({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-lg font-semibold">Team ID</DialogTitle>
+          <DialogTitle className="text-lg font-semibold">
+            Project ID
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div>
             <Input
-              placeholder="Enter your Team ID"
+              placeholder="Enter your Project ID"
               className="w-full"
               value={teamId}
               onChange={(e) => setTeamId(e.target.value)}
@@ -55,7 +63,7 @@ export function JoinTeamModal({
           </div>
 
           <p className="text-sm text-gray-600">
-            Ask your team admin for the Team ID if you don't have it.
+            Ask your project admin for the Project ID if you don't have it.
           </p>
         </div>
 
@@ -65,7 +73,7 @@ export function JoinTeamModal({
             onClick={handleSubmit}
             disabled={!teamId.trim()}
           >
-            Join Team
+            Join Project
           </Button>
         </div>
       </DialogContent>

@@ -73,7 +73,11 @@ export function EditTaskModal({
 
   const extractCleanDescription = (description?: string): string => {
     if (!description) return "";
-    return description.replace(/Status:.*Priority:.*/, "").trim();
+    return description
+      .split(/\r?\n/)
+      .filter((line) => !/^\s*(Status:|Priority:)\s*/i.test(line))
+      .join("\n")
+      .trim();
   };
 
   useEffect(() => {
@@ -107,6 +111,8 @@ export function EditTaskModal({
 
   const handleSave = async () => {
     if (!title.trim()) return;
+    // Require due date and time when saving
+    if (!dueDate || !selectedTime) return;
 
     setIsSubmitting(true);
 
@@ -174,7 +180,7 @@ export function EditTaskModal({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-600">
-                Due Date
+                Due Date<span className="text-red-500">*</span>
               </label>
               <Popover modal>
                 <PopoverTrigger asChild>
@@ -206,7 +212,7 @@ export function EditTaskModal({
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-600">
-                Time (24h)
+                Time (24h)<span className="text-red-500">*</span>
               </label>
               <Input
                 type="time"
@@ -242,7 +248,9 @@ export function EditTaskModal({
 
           <Button
             onClick={handleSave}
-            disabled={!title.trim() || isSubmitting}
+            disabled={
+              !title.trim() || !dueDate || !selectedTime || isSubmitting
+            }
             className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-xl py-3 text-base font-medium"
           >
             {isSubmitting ? (

@@ -80,6 +80,41 @@ export const task = pgTable("task", {
   updatedAt: timestamp("updated_at").$defaultFn(() => new Date()).notNull(),
 });
 
-export const schema = { user, session, account, verification, task };
+export const project = pgTable("project", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  teamId: text("team_id").notNull(),
+  createdAt: timestamp("created_at").$defaultFn(() => new Date()).notNull(),
+  updatedAt: timestamp("updated_at").$defaultFn(() => new Date()).notNull(),
+});
+
+export const projectMember = pgTable("project_member", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => project.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  role: text("role").notNull(), // owner | admin | editor | viewer
+  createdAt: timestamp("created_at").$defaultFn(() => new Date()).notNull(),
+  updatedAt: timestamp("updated_at").$defaultFn(() => new Date()).notNull(),
+});
+
+export const projectInvite = pgTable("project_invite", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => project.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  role: text("role").notNull(), // admin | editor | viewer
+  token: text("token").notNull().unique(),
+  status: text("status").notNull().$defaultFn(() => "pending"), // pending | accepted | revoked | expired
+  invitedByUserId: text("invited_by_user_id").references(() => user.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").$defaultFn(() => new Date()).notNull(),
+  expiresAt: timestamp("expires_at"),
+});
+
+export const schema = { user, session, account, verification, task, project, projectMember, projectInvite };
 export type Task = typeof task.$inferSelect;
 export type NewTask = typeof task.$inferInsert;
+export type Project = typeof project.$inferSelect;
+export type NewProject = typeof project.$inferInsert;
+export type ProjectMember = typeof projectMember.$inferSelect;
+export type NewProjectMember = typeof projectMember.$inferInsert;
+export type ProjectInvite = typeof projectInvite.$inferSelect;
+export type NewProjectInvite = typeof projectInvite.$inferInsert;

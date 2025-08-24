@@ -81,7 +81,7 @@ const page = () => {
                   {projectName}
                 </div>
                 <div className="rounded-full border border-gray-200 bg-gray-50 text-gray-700 px-4 py-2 text-sm font-mono">
-                  Team ID: {teamId}
+                  Project ID: {teamId}
                 </div>
               </>
             )}

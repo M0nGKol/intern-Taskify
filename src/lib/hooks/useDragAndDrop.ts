@@ -39,8 +39,8 @@ export function useDragAndDrop() {
 
   const handleDrop = async (
     e: React.DragEvent,
-    targetStatus: string,
-    onStatusUpdate: (taskId: string, status: string) => Promise<boolean>
+    targetStatus: Task["status"],
+    onStatusUpdate: (taskId: string, status: Task["status"]) => Promise<boolean>
   ) => {
     e.preventDefault();
 

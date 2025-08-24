@@ -28,8 +28,22 @@ export function useTaskManagement() {
     description?: string | null
   ): Task["priority"] => {
     if (!description) return "medium";
-    const priorityMatch = description.match(/Priority: (high|medium|low)/);
-    return (priorityMatch?.[1] as Task["priority"]) || "medium";
+    const match = description.match(/Priority:\s*(high|medium|low|hard|urgent|normal|minor)/i);
+    const raw = match?.[1]?.toLowerCase();
+    switch (raw) {
+      case "high":
+      case "hard":
+      case "urgent":
+        return "high";
+      case "low":
+      case "minor":
+        return "low";
+      case "medium":
+      case "normal":
+        return "medium";
+      default:
+        return "medium";
+    }
   };
 
   const getPriorityColor = (priority: string) => {
@@ -147,7 +161,6 @@ export function useTaskManagement() {
         )
       );
       
-      toast.success("Task updated successfully");
       return true;
     } catch (error) {
       console.error("Error updating task:", error);
@@ -187,19 +200,21 @@ export function useTaskManagement() {
       );
 
       await updateTaskStatus(taskId, newStatus);
-      toast.success("Task status updated");
       return true;
     } catch (error) {
       console.error("Error updating task status:", error);
       toast.error("Failed to update task status");
-      // Revert optimistic update on error
       await fetchTasks();
       return false;
     }
   };
 
   const getTasksByStatus = (status: string) => {
-    return tasks.filter((task) => task.status === status);
+    return tasks.filter((task) => {
+      const matchesStatus = task.status === status;
+      const matchesProject = projectName ? task.projectName === projectName : true;
+      return matchesStatus && matchesProject;
+    });
   };
 
   const getUpcomingTasks = (limit: number = 5) => {
@@ -222,7 +237,7 @@ export function useTaskManagement() {
 
   useEffect(() => {
     fetchTasks();
-  }, [teamId]);
+  }, [teamId, projectName]);
 
   return {
     tasks,

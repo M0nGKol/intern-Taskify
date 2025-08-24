@@ -1,3 +1,4 @@
+// middleware.ts
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "./src/middleware/rate-limit";
 
@@ -7,16 +8,24 @@ export async function middleware(request: NextRequest) {
 
 	// Rate limiting for auth endpoints
 	if (pathname.startsWith('/api/sign-in') || pathname.startsWith('/api/sign-up')) {
-		const rateLimitResult = rateLimit(request, 5, 15 * 60 * 1000); // 5 attempts per 15 minutes
+		const rateLimitResult = rateLimit(request, 5, 15 * 60 * 1000);
 		if (rateLimitResult.status === 429) {
 			return rateLimitResult;
 		}
 	}
 
+	// Public routes
 	if (pathname.startsWith('/sign-in') || pathname.startsWith('/sign-up') || pathname === '/') {
 		return NextResponse.next();
 	}
-	if (pathname.startsWith('/dashboard') || pathname.startsWith('/projects')) {
+
+	// Protected app routes - redirect if no session
+	if (
+		pathname.startsWith('/dashboard') ||
+		pathname.startsWith('/projects') ||
+		pathname.startsWith('/tasks') ||
+		pathname.startsWith('/notes')
+	) {
 		if (!sessionCookie) {
 			return NextResponse.redirect(new URL("/sign-in", request.url));
 		}
@@ -29,6 +38,8 @@ export const config = {
 	matcher: [
 		"/dashboard/:path*",
 		"/projects/:path*",
+		"/tasks/:path*",
+		"/notes/:path*",
 		"/sign-in",
 		"/sign-up",
 		"/",

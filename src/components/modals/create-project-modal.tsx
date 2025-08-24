@@ -9,7 +9,12 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
+import { createProject } from "@/actions/project-action";
+import { nanoid } from "nanoid";
+import {
+  defaultColumns,
+  getColumnsStorageKey,
+} from "@/lib/hooks/useColumnManagement";
 interface CreateProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -22,15 +27,22 @@ export function CreateProjectModal({
   onProjectCreated,
 }: CreateProjectModalProps) {
   const [projectName, setProjectName] = useState("");
+  const generateProjectId = () => "PRJ-" + nanoid(8).toUpperCase();
 
-  const generateTeamId = () =>
-    "TEAM-" + Math.random().toString(36).slice(2, 8).toUpperCase();
-
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const name = projectName.trim();
     if (name) {
-      const teamId = generateTeamId();
-      onProjectCreated({ projectName: name, teamId });
+      const effectiveTeamId = generateProjectId();
+      try {
+        await createProject({ name, teamId: effectiveTeamId });
+      } catch {}
+      try {
+        localStorage.setItem(
+          getColumnsStorageKey(effectiveTeamId),
+          JSON.stringify(defaultColumns)
+        );
+      } catch {}
+      onProjectCreated({ projectName: name, teamId: effectiveTeamId });
       setProjectName("");
     }
   };

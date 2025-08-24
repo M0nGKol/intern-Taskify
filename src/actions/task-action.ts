@@ -4,7 +4,7 @@ import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { task, NewTask, Task } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
 const pool = new Pool({
@@ -18,6 +18,15 @@ export interface KanbanTask extends Task {
   priority: 'high' | 'medium' | 'low';
 }
 
+export async function getTasksByTeamAndProject(teamId: string, projectName?: string) {
+  if (!projectName) {
+    return db.select().from(task).where(eq(task.teamId, teamId));
+  }
+  return db
+    .select()
+    .from(task)
+    .where(and(eq(task.teamId, teamId), eq(task.projectName, projectName)));
+}
 
 export async function createTask(taskData: Omit<NewTask, 'id' | 'createdAt' | 'updatedAt'>): Promise<Task> {
   try {
@@ -52,7 +61,7 @@ export async function createKanbanTask(taskData: {
     const [newTask] = await db.insert(task).values({
       id: nanoid(),
       title: taskData.title,
-      description: taskData.description,
+      description: `${taskData.description || ''}\nStatus: ${taskData.status}\nPriority: ${taskData.priority}`,
       dueDate: taskData.dueDate,
       teamId: taskData.teamId,
       projectName: taskData.projectName,
@@ -143,5 +152,37 @@ export async function getTaskById(id: string): Promise<Task | null> {
   } catch (error) {
     console.error('Error fetching task:', error);
     throw new Error('Failed to fetch task');
+  }
+}
+
+// Aggregate counts per day for a team (optionally filtered by project) within a date range
+export async function getTaskCountsByDate(
+  teamId: string,
+  startDate: Date,
+  endDate: Date,
+  projectName?: string
+): Promise<{ date: string; count: number }[]> {
+  try {
+    const params: any[] = [teamId, startDate, endDate];
+    let sqlText = `
+      SELECT to_char(due_date::date, 'YYYY-MM-DD') AS date, COUNT(*)::int AS count
+      FROM "task"
+      WHERE team_id = $1
+        AND due_date IS NOT NULL
+        AND due_date >= $2
+        AND due_date < $3`;
+
+    if (projectName) {
+      sqlText += ` AND project_name = $4`;
+      params.push(projectName);
+    }
+
+    sqlText += ` GROUP BY 1 ORDER BY 1`;
+
+    const { rows } = await pool.query(sqlText, params);
+    return rows as { date: string; count: number }[];
+  } catch (error) {
+    console.error('Error fetching task counts by date:', error);
+    throw new Error('Failed to fetch task counts by date');
   }
 }
