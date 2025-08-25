@@ -55,8 +55,12 @@ export default function SignUp() {
 
       toast.success("Account created successfully!");
       router.push("/dashboard");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to create account. Please try again.");
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("An unexpected error occurred");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -71,13 +75,14 @@ export default function SignUp() {
         provider: "google",
         callbackURL: `${window.location.origin}/dashboard`,
       });
-      await refreshAuth();
-      toast.success("Signed up successfully");
-      router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message || "Failed to sign up with Google.");
-    } finally {
-      setIsLoading(false);
+      return; // Google will redirect
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        toast.error(err.message || "Failed to sign in with Google");
+      } else {
+        toast.error("Failed to sign in with Google");
+      }
+      setIsGoogleLoading(false);
     }
   };
 
@@ -116,7 +121,7 @@ export default function SignUp() {
               variant="outline"
               className="w-full max-w-xs justify-center gap-2 rounded-md border border-gray-300 bg-[#F5F5F5] py-2 text-gray-700 shadow-sm hover:bg-gray-100"
               onClick={handleGoogleSignUp}
-              disabled={isLoading}
+              disabled={isLoading || isGoogleLoading}
             >
               <Image
                 src="/google.png"

@@ -15,6 +15,8 @@ import {
   defaultColumns,
   getColumnsStorageKey,
 } from "@/lib/hooks/useColumnManagement";
+import { useAuth } from "@/components/providers/auth-provider";
+
 interface CreateProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -27,6 +29,7 @@ export function CreateProjectModal({
   onProjectCreated,
 }: CreateProjectModalProps) {
   const [projectName, setProjectName] = useState("");
+  const { user } = useAuth();
   const generateProjectId = () => "PRJ-" + nanoid(8).toUpperCase();
 
   const handleSubmit = async () => {
@@ -34,7 +37,11 @@ export function CreateProjectModal({
     if (name) {
       const effectiveTeamId = generateProjectId();
       try {
-        await createProject({ name, teamId: effectiveTeamId });
+        await createProject({
+          name,
+          teamId: effectiveTeamId,
+          ownerUserId: user?.id,
+        });
       } catch {}
       try {
         localStorage.setItem(

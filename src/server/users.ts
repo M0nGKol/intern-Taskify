@@ -1,12 +1,11 @@
 'use server'
 
 import { authClient } from "@/lib/auth-client"
-import { auth } from "@/lib/auth"
 
 export const getCurrentUser = async () => {
     try {
         return null;
-    } catch (error) {
+    } catch {
         return null;
     }
 }
@@ -15,7 +14,7 @@ export const SignOut = async () => {
     try {
         await authClient.signOut();
         return { success: true };
-    } catch (error) {
+    } catch {
         return { success: false, error: "Failed to sign out" };
     }
 };
@@ -26,7 +25,7 @@ export const checkAuthStatus = async () => {
             isAuthenticated: false,
             user: null
         };
-    } catch (error) {
+    } catch {
         return {
             isAuthenticated: false,
             user: null

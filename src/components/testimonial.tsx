@@ -74,7 +74,7 @@ const Testimonial = () => {
                   <p className="text-sm text-muted-foreground">{item.title}</p>
                 </div>
                 <p className="text-muted-foreground italic text-sm">
-                  "{item.quote}"
+                  {`"${item.quote}"`}
                 </p>
               </div>
             ))}

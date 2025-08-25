@@ -25,7 +25,7 @@ export default function WelcomePage() {
                   🚀 Create Your First Project
                 </h3>
                 <p className="text-primary">
-                  Start organizing your work by clicking "New Project" above.
+                  Start organizing your work by clicking `New Project` above.
                 </p>
               </div>
 
@@ -34,7 +34,7 @@ export default function WelcomePage() {
                   👥 Join an Existing Project
                 </h3>
                 <p className="text-primary">
-                  Already part of a team? Use "Join Existing" to connect with
+                  Already part of a team? Use `Join Existing` to connect with
                   them.
                 </p>
               </div>

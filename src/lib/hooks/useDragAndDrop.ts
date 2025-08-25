@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Task } from "./useTaskManagement";
+import { Task } from "@/constants/data";
 
 export function useDragAndDrop() {
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);

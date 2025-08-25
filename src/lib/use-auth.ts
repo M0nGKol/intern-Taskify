@@ -21,8 +21,7 @@ export function useAuth() {
       try {
         setIsAuthenticated(false);
         setUser(null);
-      } catch (error) {
-  
+      } catch {
         setIsAuthenticated(false);
         setUser(null);
       } finally {
@@ -38,7 +37,8 @@ export function useAuth() {
       await authClient.signOut();
       setUser(null);
       setIsAuthenticated(false);
-    } catch (error) {
+    } catch {
+      // Ignore sign out errors
     }
   };
 

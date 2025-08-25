@@ -1,23 +1,21 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, LogOut } from "lucide-react";
+import { Plus } from "lucide-react";
 import { CreateProjectModal } from "@/components/modals/create-project-modal";
 import { JoinTeamModal } from "@/components/modals/join-team-modal";
 import WelcomePage from "@/components/dashboard/WelcomePage";
 import HomePage from "@/components/dashboard/HomePage";
 import { useAuth } from "@/components/providers/auth-provider";
-import { useRouter } from "next/navigation";
 import { useDashboardDateTime } from "@/lib/hooks/useDashboardDateTime";
 import { usePersistentProjectState } from "@/lib/hooks/usePersistentProjectState";
 
-const page = () => {
+const Page = () => {
   const [activeModal, setActiveModal] = useState<string | null>(null);
-  const { user, signOut } = useAuth();
-  const router = useRouter();
+  const { user } = useAuth();
 
   const { currentDate, greeting } = useDashboardDateTime();
-  const { hasProject, projectName, teamId, setProject, clearProject } =
+  const { hasProject, projectName, teamId, setProject } =
     usePersistentProjectState();
 
   const openModal = (modalname: string) => setActiveModal(modalname);
@@ -37,12 +35,6 @@ const page = () => {
   }) => {
     setProject(payload.projectName, payload.teamId);
     closeModal();
-  };
-
-  const handleSignOut = async () => {
-    await signOut();
-    clearProject();
-    router.push("/sign-in");
   };
 
   return (
@@ -113,4 +105,4 @@ const page = () => {
   );
 };
 
-export default page;
+export default Page;

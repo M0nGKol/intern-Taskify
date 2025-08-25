@@ -17,7 +17,6 @@ type ViewTask = {
 export function useProjectsPage() {
   // Base hooks
   const {
-    tasks,
     isLoading,
     projectName,
     createTask,
@@ -31,7 +30,6 @@ export function useProjectsPage() {
   const {
     columns,
     createColumn,
-    updateColumn,
     deleteColumn,
     colorOptions,
     reorderColumns,

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { Label } from "@/components/ui/label";
@@ -17,9 +17,13 @@ export default function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState("");
-  const { refreshAuth } = useAuth();
+  const { refreshAuth, isAuthenticated } = useAuth();
   const router = useRouter();
-
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.push("/dashboard");
+    }
+  }, [isAuthenticated, isLoading, router]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -52,12 +56,10 @@ export default function LoginForm() {
     try {
       await authClient.signIn.social({
         provider: "google",
-        callbackURL: `${window.location.origin}/dashboard`,
+        callbackURL: `${window.location.origin}/sign-in`,
       });
-
-      await refreshAuth();
-      toast.success("Signed in successfully");
-      router.push("/dashboard");
+      // Do not push or refresh here; the provider redirects.
+      return;
     } catch (err: unknown) {
       if (err instanceof Error) {
         toast.error(err.message || "Failed to sign in with Google");

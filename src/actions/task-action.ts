@@ -6,6 +6,7 @@ import { Pool } from 'pg';
 import { task, NewTask, Task } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { checkProjectPermission } from '@/lib/role-permissions';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL!,
@@ -28,10 +29,22 @@ export async function getTasksByTeamAndProject(teamId: string, projectName?: str
     .where(and(eq(task.teamId, teamId), eq(task.projectName, projectName)));
 }
 
-export async function createTask(taskData: Omit<NewTask, 'id' | 'createdAt' | 'updatedAt'>): Promise<Task> {
+// Enhanced createTask with role validation
+export async function createTask(
+  taskData: Omit<NewTask, 'id' | 'createdAt' | 'updatedAt'>,
+  userId?: string
+): Promise<Task> {
   try {
+    // Check if user has permission to create tasks
+    if (userId && taskData.teamId) {
+      const canCreate = await checkProjectPermission(userId, taskData.teamId, 'canCreateTasks');
+      if (!canCreate) {
+        throw new Error('You do not have permission to create tasks in this project');
+      }
+    }
+
     const [newTask] = await db.insert(task).values({
-      id: nanoid(), // Generate a unique ID
+      id: nanoid(),
       title: taskData.title,
       description: taskData.description,
       dueDate: taskData.dueDate,
@@ -43,21 +56,33 @@ export async function createTask(taskData: Omit<NewTask, 'id' | 'createdAt' | 'u
     return newTask;
   } catch (error) {
     console.error('Error creating task:', error);
-    throw new Error('Failed to create task');
+    throw error;
   }
 }
 
-export async function createKanbanTask(taskData: {
-  title: string;
-  description?: string;
-  dueDate?: Date;
-  teamId: string;
-  projectName?: string;
-  userId?: string;
-  status: string;
-  priority: 'high' | 'medium' | 'low';
-}): Promise<Task> {
+// Enhanced createKanbanTask with role validation
+export async function createKanbanTask(
+  taskData: {
+    title: string;
+    description?: string;
+    dueDate?: Date;
+    teamId: string;
+    projectName?: string;
+    userId?: string;
+    status: string;
+    priority: 'high' | 'medium' | 'low';
+  },
+  currentUserId?: string
+): Promise<Task> {
   try {
+    // Check if user has permission to create tasks
+    if (currentUserId && taskData.teamId) {
+      const canCreate = await checkProjectPermission(currentUserId, taskData.teamId, 'canCreateTasks');
+      if (!canCreate) {
+        throw new Error('You do not have permission to create tasks in this project');
+      }
+    }
+
     const [newTask] = await db.insert(task).values({
       id: nanoid(),
       title: taskData.title,
@@ -72,7 +97,7 @@ export async function createKanbanTask(taskData: {
     return newTask;
   } catch (error) {
     console.error('Error creating Kanban task:', error);
-    throw new Error('Failed to create Kanban task');
+    throw error;
   }
 }
 
@@ -96,8 +121,27 @@ export async function getAllTasks(): Promise<Task[]> {
   }
 }
 
-export async function updateTask(id: string, taskData: Partial<Omit<NewTask, 'id' | 'createdAt'>>): Promise<Task | null> {
+// Enhanced updateTask with role validation
+export async function updateTask(
+  id: string, 
+  taskData: Partial<Omit<NewTask, 'id' | 'createdAt'>>,
+  currentUserId?: string
+): Promise<Task | null> {
   try {
+    // Get the current task to check permissions
+    const [currentTask] = await db.select().from(task).where(eq(task.id, id));
+    if (!currentTask) {
+      throw new Error('Task not found');
+    }
+
+    // Check if user has permission to edit tasks
+    if (currentUserId && currentTask.teamId) {
+      const canEdit = await checkProjectPermission(currentUserId, currentTask.teamId, 'canEditTasks');
+      if (!canEdit) {
+        throw new Error('You do not have permission to edit tasks in this project');
+      }
+    }
+
     const updateData: Partial<Omit<NewTask, 'id' | 'createdAt'>> & { updatedAt: Date } = { 
       ...taskData, 
       updatedAt: new Date() 
@@ -112,11 +156,31 @@ export async function updateTask(id: string, taskData: Partial<Omit<NewTask, 'id
     return updatedTask || null;
   } catch (error) {
     console.error('Error updating task:', error);
-    throw new Error('Failed to update task');
+    throw error;
   }
 }
-export async function updateTaskStatus(id: string, status: string): Promise<Task | null> {
+
+// Enhanced updateTaskStatus with role validation
+export async function updateTaskStatus(
+  id: string, 
+  status: string,
+  currentUserId?: string
+): Promise<Task | null> {
   try {
+    // Get the current task to check permissions
+    const [currentTask] = await db.select().from(task).where(eq(task.id, id));
+    if (!currentTask) {
+      throw new Error('Task not found');
+    }
+
+    // Check if user has permission to change task status
+    if (currentUserId && currentTask.teamId) {
+      const canChangeStatus = await checkProjectPermission(currentUserId, currentTask.teamId, 'canChangeTaskStatus');
+      if (!canChangeStatus) {
+        throw new Error('You do not have permission to change task status in this project');
+      }
+    }
+
     const [updatedTask] = await db
       .update(task)
       .set({
@@ -129,18 +193,32 @@ export async function updateTaskStatus(id: string, status: string): Promise<Task
     return updatedTask || null;
   } catch (error) {
     console.error('Error updating task status:', error);
-    throw new Error('Failed to update task status');
+    throw error;
   }
 }
 
-
-export async function deleteTask(id: string): Promise<boolean> {
+// Enhanced deleteTask with role validation
+export async function deleteTask(id: string, currentUserId?: string): Promise<boolean> {
   try {
+    // Get the current task to check permissions
+    const [currentTask] = await db.select().from(task).where(eq(task.id, id));
+    if (!currentTask) {
+      throw new Error('Task not found');
+    }
+
+    // Check if user has permission to delete tasks
+    if (currentUserId && currentTask.teamId) {
+      const canDelete = await checkProjectPermission(currentUserId, currentTask.teamId, 'canDeleteTasks');
+      if (!canDelete) {
+        throw new Error('You do not have permission to delete tasks in this project');
+      }
+    }
+
     const result = await db.delete(task).where(eq(task.id, id));
     return result.rowCount! > 0;
   } catch (error) {
     console.error('Error deleting task:', error);
-    throw new Error('Failed to delete task');
+    throw error;
   }
 }
 
@@ -163,7 +241,7 @@ export async function getTaskCountsByDate(
   projectName?: string
 ): Promise<{ date: string; count: number }[]> {
   try {
-    const params: any[] = [teamId, startDate, endDate];
+    const params: string[] = [teamId, startDate.toISOString(), endDate.toISOString()];
     let sqlText = `
       SELECT to_char(due_date::date, 'YYYY-MM-DD') AS date, COUNT(*)::int AS count
       FROM "task"

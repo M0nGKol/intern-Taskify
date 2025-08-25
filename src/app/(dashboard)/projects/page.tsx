@@ -27,6 +27,7 @@ import { useProjectsPage } from "@/lib/hooks/useProjectPage";
 export default function TasksPage() {
   const {
     // tasks
+
     isLoading,
     projectName,
     getTasksByStatus,
@@ -49,7 +50,6 @@ export default function TasksPage() {
     handleTaskDragEnter,
     handleTaskDragLeave,
     // columns dnd
-    draggedColumnId,
     dragOverColumnId,
     handleColumnDragStart,
     handleColumnDragOver,
@@ -78,7 +78,6 @@ export default function TasksPage() {
     setViewTask,
     switchProject,
     deleteProjectByName,
-    teamId,
     // utils
     cleanDescription,
   } = useProjectsPage();
@@ -423,7 +422,17 @@ export default function TasksPage() {
       <EditTaskModal
         isOpen={isEditModalOpen}
         onClose={closeEditTaskModal}
-        task={selectedTask}
+        task={
+          selectedTask
+            ? {
+                ...selectedTask,
+                description: selectedTask.description ?? undefined,
+                dueDate: selectedTask.dueDate ?? undefined,
+                projectName: selectedTask.projectName ?? undefined,
+                userId: selectedTask.userId ?? undefined,
+              }
+            : undefined
+        }
         onUpdateTask={handleUpdateTask}
       />
       <CreateColumnModal

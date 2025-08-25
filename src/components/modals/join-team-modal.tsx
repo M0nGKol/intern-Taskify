@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { getProjectByTeamId } from "@/actions/project-action";
 
 interface JoinTeamModalProps {
@@ -63,7 +62,7 @@ export function JoinTeamModal({
           </div>
 
           <p className="text-sm text-gray-600">
-            Ask your project admin for the Project ID if you don't have it.
+            Ask your project admin for the Project ID if you don&apos;t have it.
           </p>
         </div>
 

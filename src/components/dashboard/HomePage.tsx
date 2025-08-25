@@ -31,7 +31,7 @@ export default function HomePage({ projectName }: HomePageProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeModal, setActiveModal] = useState<string | null>(null);
-  const [monthDate, setMonthDate] = useState<Date>(new Date());
+  const [monthDate] = useState<Date>(new Date());
   const [countsByDate, setCountsByDate] = useState<Map<string, number>>(
     new Map()
   );
@@ -58,22 +58,22 @@ export default function HomePage({ projectName }: HomePageProps) {
     closeModal();
   };
 
-  const fetchTasks = async () => {
-    if (!teamId) return;
-
-    try {
-      setIsLoading(true);
-      const fetchedTasks = await getTasksByTeam(teamId);
-      setTasks(fetchedTasks);
-    } catch (error) {
-      console.error("Error fetching tasks:", error);
-      toast.error("Failed to fetch tasks");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const fetchTasks = async () => {
+      if (!teamId) return;
+
+      try {
+        setIsLoading(true);
+        const fetchedTasks = await getTasksByTeam(teamId);
+        setTasks(fetchedTasks);
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+        toast.error("Failed to fetch tasks");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchTasks();
   }, [teamId]);
 
@@ -90,10 +90,6 @@ export default function HomePage({ projectName }: HomePageProps) {
   );
   const startDay = startOfMonth.getDay();
   const daysInMonth = endOfMonth.getDate();
-
-  // useEffect(() => {
-  //   fetchTasks();
-  // }, [teamId]);
 
   useEffect(() => {
     const loadCounts = async () => {

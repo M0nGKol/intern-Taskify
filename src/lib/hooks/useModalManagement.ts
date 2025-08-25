@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { Task } from "@/constants/data";
 
 export function useModalManagement() {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<string>("opens");
-  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   
 
   const openCreateTaskModal = (status?: string) => {
@@ -18,7 +19,7 @@ export function useModalManagement() {
     setIsTaskModalOpen(false);
   };
 
-  const openEditTaskModal = (task: any) => {
+  const openEditTaskModal = (task: Task) => {
     setSelectedTask(task);
     setIsEditModalOpen(true);
   };

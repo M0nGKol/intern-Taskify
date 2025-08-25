@@ -6,6 +6,7 @@ import React from "react";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
+import { NotificationBell } from "@/components/NotificationBell";
 
 const Sidebar = () => {
   const { user, signOut } = useAuth();
@@ -17,7 +18,7 @@ const Sidebar = () => {
       await signOut();
       toast.success("Signed out successfully");
       router.push("/sign-in");
-    } catch (error) {
+    } catch {
       toast.error("Failed to sign out");
     }
   };
@@ -95,6 +96,7 @@ const Sidebar = () => {
               <div className="w-8 h-0.5 bg-white mt-2"></div>
             )}
           </Link>
+          <NotificationBell />
         </nav>
 
         <div className="mt-auto space-y-4">

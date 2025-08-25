@@ -18,19 +18,12 @@ import { CreateTaskModal } from "@/components/modals/create-task-modal";
 import { EditTaskModal } from "@/components/modals/edit-task-modal";
 import { DeleteTaskModal } from "@/components/modals/delete-task-modal";
 import { cn } from "@/lib/utils";
-import { usePersistentProjectState } from "@/lib/hooks/usePersistentProjectState";
-import { getProjectsByTeam } from "@/actions/project-action";
 import { TasksPageSkeleton } from "@/components/TasksPageSkeleton";
+import { Task } from "@/constants/data";
 
 export default function TasksPage() {
-  const {
-    tasks,
-    isLoading,
-    createTask,
-    updateTaskById,
-    deleteTaskById,
-    getPriorityColor,
-  } = useTaskManagement();
+  const { tasks, isLoading, createTask, updateTaskById, deleteTaskById } =
+    useTaskManagement();
 
   const {
     currentDate,
@@ -39,7 +32,6 @@ export default function TasksPage() {
     projectFilter,
     searchQuery,
     projects,
-    filteredTasks,
     taskSummary,
     setViewType,
     setPriorityFilter,
@@ -53,39 +45,13 @@ export default function TasksPage() {
   } = useCalendar(tasks);
 
   // Project switching
-  const { setProject, teamId, projectName } = usePersistentProjectState();
-  const [projectQuery, setProjectQuery] = useState("");
-  const [dbProjects, setDbProjects] = useState<string[]>([]);
-
-  React.useEffect(() => {
-    const load = async () => {
-      if (!teamId) return;
-      try {
-        const list = await getProjectsByTeam(teamId);
-        setDbProjects(list.map((p) => p.name));
-      } catch {}
-    };
-    load();
-  }, [teamId]);
-
-  const projectOptions = React.useMemo(() => {
-    const names = Array.from(new Set(dbProjects));
-    return names;
-  }, [dbProjects]);
-
-  const filteredProjects = React.useMemo(
-    () =>
-      projectOptions.filter((n) =>
-        n.toLowerCase().includes(projectQuery.toLowerCase())
-      ),
-    [projectOptions, projectQuery]
-  );
+  // const { teamId } = usePersistentProjectState();
 
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   // Time slots for week view (24h)
   const timeSlots = Array.from({ length: 24 }, (_, i) => i); // 00 → 23
@@ -230,7 +196,11 @@ export default function TasksPage() {
                     ? priority.color
                     : "text-gray-600 hover:bg-gray-100"
                 )}
-                onClick={() => setPriorityFilter(priority.value as any)}
+                onClick={() =>
+                  setPriorityFilter(
+                    priority.value as "all" | "high" | "medium" | "low"
+                  )
+                }
               >
                 {priority.label}
               </div>
@@ -345,7 +315,7 @@ export default function TasksPage() {
                         className="h-16 border-b border-gray-200 relative"
                       >
                         {/* Tasks for this time slot */}
-                        {getTasksForDate(date).map((task, index) => {
+                        {getTasksForDate(date).map((task) => {
                           const taskHour = task.dueDate
                             ? new Date(task.dueDate).getHours()
                             : 0;
@@ -474,7 +444,13 @@ export default function TasksPage() {
               setIsEditModalOpen(false);
               setSelectedTask(null);
             }}
-            task={selectedTask}
+            task={{
+              ...selectedTask,
+              description: selectedTask.description ?? undefined,
+              dueDate: selectedTask.dueDate ?? undefined,
+              projectName: selectedTask.projectName ?? undefined,
+              userId: selectedTask.userId ?? undefined,
+            }}
             onUpdateTask={handleEditTask}
           />
           <DeleteTaskModal

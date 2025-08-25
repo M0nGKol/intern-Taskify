@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import {
   createKanbanTask,
@@ -67,7 +67,7 @@ export function useTaskManagement() {
     });
   };
 
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     if (!teamId) return;
 
     try {
@@ -89,7 +89,7 @@ export function useTaskManagement() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [teamId]);
 
   const createTask = async (taskData: {
     title: string;
@@ -237,7 +237,7 @@ export function useTaskManagement() {
 
   useEffect(() => {
     fetchTasks();
-  }, [teamId, projectName]);
+  }, [fetchTasks, projectName]);
 
   return {
     tasks,

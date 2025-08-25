@@ -37,7 +37,7 @@ export function DeleteTaskModal({
             <p className="text-sm text-gray-600 mb-2">
               Are you sure you want to delete this task?
             </p>
-            <p className="text-sm font-medium text-gray-900">"{taskTitle}"</p>
+            <p className="text-sm font-medium text-gray-900">{`"${taskTitle}"`}</p>
             <p className="text-xs text-gray-500 mt-2">
               This action cannot be undone.
             </p>

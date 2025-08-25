@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getProjectByTeamId } from "@/actions/project-action";
+import { useEffect, useState, useCallback } from "react";
+import { getProjectByTeamId, getProjectsByTeamIds } from "@/actions/project-action";
 
 type RecentProject = {
 	name: string;
@@ -18,10 +18,9 @@ type Persisted = {
 
 const STORAGE_KEY = "taskify-dashboard";
 
-
 const PROJECT_EVENT = "taskify-project-change";
 const emitter: EventTarget | null =
-	typeof window !== "undefined" ? new EventTarget() : null;
+	typeof window !== "undefined" ? window : null;
 
 export function usePersistentProjectState() {
 	const [hasProject, setHasProject] = useState(false);
@@ -29,6 +28,7 @@ export function usePersistentProjectState() {
 	const [teamId, setTeamId] = useState("");
 	const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
 
+	// Load from localStorage and validate recent projects
 	useEffect(() => {
 		if (typeof window === "undefined") return;
 		try {
@@ -46,6 +46,46 @@ export function usePersistentProjectState() {
 					(a, b) => (b.viewedAt || 0) - (a.viewedAt || 0)
 				);
 				setRecentProjects(sorted);
+
+				// Validate against DB and prune/update names
+				(async () => {
+					try {
+						const teamIds = Array.from(
+							new Set(sorted.map((p) => p.teamId).filter(Boolean))
+						);
+						if (teamIds.length === 0) return;
+						const rows = await getProjectsByTeamIds(teamIds);
+						const byTeam = new Map(rows.map((r) => [r.teamId, r.name]));
+						const filtered = sorted
+							.filter((p) => byTeam.has(p.teamId))
+							.map((p) => ({
+								...p,
+								name: byTeam.get(p.teamId) || p.name,
+							}))
+							.slice(0, 10);
+						const changed =
+							filtered.length !== sorted.length ||
+							filtered.some(
+								(p, i) =>
+									p.teamId !== sorted[i]?.teamId ||
+									p.name !== sorted[i]?.name
+							);
+						if (!changed) return;
+						setRecentProjects(filtered);
+						try {
+							const toStore: Persisted = {
+								hasProject: !!parsed.hasProject,
+								projectName: parsed.projectName || "",
+								teamId: parsed.teamId || "",
+								recentProjects: filtered,
+							};
+							localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+							emitter?.dispatchEvent(
+								new CustomEvent<Persisted>(PROJECT_EVENT, { detail: toStore })
+							);
+						} catch {}
+					} catch {}
+				})();
 			}
 		} catch {}
 	}, []);
@@ -72,49 +112,7 @@ export function usePersistentProjectState() {
 		};
 	}, []);
 
-	// Validate current project against the database and keep UI in sync
-	useEffect(() => {
-		const validate = async () => {
-			if (!teamId) return;
-			try {
-				const proj = await getProjectByTeamId(teamId);
-				if (!proj) {
-					clearProject();
-					return;
-				}
-				if (proj.name && proj.name !== projectName) {
-					setProject(proj.name, teamId);
-				}
-			} catch {}
-		};
-
-		validate();
-	}, [teamId]);
-
-	// Re-validate on window focus to reflect external DB changes
-	useEffect(() => {
-		const onFocus = () => {
-			if (!teamId) return;
-			getProjectByTeamId(teamId)
-				.then((proj) => {
-					if (!proj) {
-						clearProject();
-						return;
-					}
-					if (proj.name && proj.name !== projectName) {
-						setProject(proj.name, teamId);
-					}
-				})
-				.catch(() => {});
-		};
-
-		if (typeof window !== "undefined") {
-			window.addEventListener("focus", onFocus);
-			return () => window.removeEventListener("focus", onFocus);
-		}
-	}, [teamId, projectName]);
-
-	const setProject = (name: string, id: string) => {
+	const setProject = useCallback((name: string, id: string) => {
 		setHasProject(true);
 		setProjectName(name);
 		setTeamId(id);
@@ -138,9 +136,9 @@ export function usePersistentProjectState() {
 				new CustomEvent<Persisted>(PROJECT_EVENT, { detail: persisted })
 			);
 		} catch {}
-	};
+	}, [recentProjects]);
 
-	const clearProject = () => {
+	const clearProject = useCallback(() => {
 		setHasProject(false);
 		setProjectName("");
 		setTeamId("");
@@ -156,7 +154,93 @@ export function usePersistentProjectState() {
 				new CustomEvent<Persisted>(PROJECT_EVENT, { detail: persisted })
 			);
 		} catch {}
+	}, [recentProjects]);
+
+	// Re-validate on window focus to reflect external DB changes
+	useEffect(() => {
+		const onFocus = () => {
+			// Always prune/update recent projects based on DB state
+			try {
+				const ids = Array.from(
+					new Set(recentProjects.map((p) => p.teamId).filter(Boolean))
+				);
+				if (ids.length > 0) {
+					getProjectsByTeamIds(ids)
+						.then((rows) => {
+							const byTeam = new Map(rows.map((r) => [r.teamId, r.name]));
+							const filtered = recentProjects
+								.filter((p) => byTeam.has(p.teamId))
+								.map((p) => ({
+									...p,
+									name: byTeam.get(p.teamId) || p.name,
+								}))
+								.slice(0, 10);
+							const changed =
+								filtered.length !== recentProjects.length ||
+								filtered.some(
+									(p, i) =>
+										p.teamId !== recentProjects[i]?.teamId ||
+										p.name !== recentProjects[i]?.name
+								);
+							if (!changed) return;
+							setRecentProjects(filtered);
+							try {
+								const persisted: Persisted = {
+									hasProject,
+									projectName,
+									teamId,
+									recentProjects: filtered,
+								};
+								localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
+								emitter?.dispatchEvent(
+									new CustomEvent<Persisted>(PROJECT_EVENT, { detail: persisted })
+								);
+							} catch {}
+						})
+						.catch(() => {});
+				}
+			} catch {}
+
+			// Validate currently selected project
+			if (!teamId) return;
+			getProjectByTeamId(teamId)
+				.then((proj) => {
+					if (!proj) {
+						clearProject();
+						return;
+					}
+					// Only resync the name if a specific project is selected.
+					if (hasProject && proj.name && proj.name !== projectName) {
+						setProject(proj.name, teamId);
+					}
+				})
+				.catch(() => {});
+		};
+
+		if (typeof window !== "undefined") {
+			window.addEventListener("focus", onFocus);
+			return () => window.removeEventListener("focus", onFocus);
+		}
+	}, [teamId, projectName, recentProjects, hasProject, clearProject, setProject]);
+
+	// Persist an "All Projects" selection while keeping the team context
+	const setAllProjects = () => {
+		setHasProject(false);
+		setProjectName("");
+		// keep teamId as-is
+		try {
+			const persisted: Persisted = {
+				hasProject: false,
+				projectName: "",
+				teamId,
+				recentProjects,
+			};
+			localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
+			emitter?.dispatchEvent(
+				new CustomEvent<Persisted>(PROJECT_EVENT, { detail: persisted })
+			);
+		} catch {}
 	};
 
-	return { hasProject, projectName, teamId, recentProjects, setProject, clearProject };
+	return { hasProject, projectName, teamId, recentProjects, setProject, setAllProjects, clearProject };
 }
