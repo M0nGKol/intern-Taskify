@@ -4,8 +4,8 @@ import { Mail } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import React from "react";
-import { Input } from "./ui/input";
-import { Button } from "./ui/button";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 const Footer = () => {
   return (
     <>

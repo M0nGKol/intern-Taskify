@@ -1,5 +1,5 @@
 import { PropsWithChildren } from "react";
-import Header from "@/components/Header";
+import Header from "@/components/landingPage/Header";
 export default function PageLayout({ children }: PropsWithChildren) {
   return (
     <div>
