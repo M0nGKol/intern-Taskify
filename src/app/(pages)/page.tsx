@@ -1,7 +1,7 @@
-import Testimonial from "@/components/Testimonial";
-import Features from "@/components/Features";
-import Footer from "@/components/Footer";
-import HeroSection from "@/components/HeroSection";
+import Testimonial from "@/components/landingPage/Testimonial";
+import Features from "@/components/landingPage/Features";
+import Footer from "@/components/landingPage/Footer";
+import HeroSection from "@/components/landingPage/HeroSection";
 
 export default function Home() {
   return (
