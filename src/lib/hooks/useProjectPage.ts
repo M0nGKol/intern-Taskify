@@ -30,6 +30,7 @@ export function useProjectsPage() {
   const {
     columns,
     createColumn,
+
     deleteColumn,
     colorOptions,
     reorderColumns,

@@ -1,42 +1,17 @@
-"use client";
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { CreateProjectModal } from "@/components/modals/create-project-modal";
-import { JoinTeamModal } from "@/components/modals/join-team-modal";
-import WelcomePage from "@/components/dashboard/WelcomePage";
-import HomePage from "@/components/dashboard/HomePage";
+
 import { useAuth } from "@/components/providers/auth-provider";
 import { useDashboardDateTime } from "@/lib/hooks/useDashboardDateTime";
 import { usePersistentProjectState } from "@/lib/hooks/usePersistentProjectState";
-
-const Page = () => {
-  const [activeModal, setActiveModal] = useState<string | null>(null);
+export default function HomeHeader() {
   const { user } = useAuth();
-
+  const [activeModal, setActiveModal] = useState<string | null>(null);
   const { currentDate, greeting } = useDashboardDateTime();
-  const { hasProject, projectName, teamId, setProject } =
-    usePersistentProjectState();
-
+  const { hasProject, projectName, teamId } = usePersistentProjectState();
   const openModal = (modalname: string) => setActiveModal(modalname);
   const closeModal = () => setActiveModal(null);
-
-  const handleProjectCreated = (payload: {
-    projectName: string;
-    teamId: string;
-  }) => {
-    setProject(payload.projectName, payload.teamId);
-    closeModal();
-  };
-
-  const handleProjectJoined = (payload: {
-    projectName: string;
-    teamId: string;
-  }) => {
-    setProject(payload.projectName, payload.teamId);
-    closeModal();
-  };
-
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
@@ -80,51 +55,6 @@ const Page = () => {
           </div>
         </div>
       </div>
-
-      {/* Dashboard Content */}
-      <div className="flex-1 overflow-y-auto">
-        {hasProject ? <HomePage projectName={projectName} /> : <WelcomePage />}
-      </div>
-
-      {/* Modals */}
-      {activeModal === "createProject" && (
-        <CreateProjectModal
-          isOpen={true}
-          onClose={closeModal}
-          onProjectCreated={handleProjectCreated}
-        />
-      )}
-      {activeModal === "joinTeam" && (
-        <JoinTeamModal
-          isOpen={true}
-          onClose={closeModal}
-          onProjectJoined={handleProjectJoined}
-        />
-      )}
     </div>
   );
-};
-
-export default Page;
-
-// import { getAllProjects } from "@/actions/project-action";
-// import Link from "next/link";
-// import React from "react";
-
-// export default async function DashboardPage() {
-//   // const session = await
-
-//   const projects = await getAllProjects();
-//   console.log(projects);
-//   return (
-//     <div>
-//       <h1>Dashboard</h1>
-//       {projects.map((project) => (
-//         <div key={project.id}>
-//           {project.name}
-//           <Link href={`/projects/${project.teamId}`}>View</Link>
-//         </div>
-//       ))}
-//     </div>
-//   );
-// }
+}

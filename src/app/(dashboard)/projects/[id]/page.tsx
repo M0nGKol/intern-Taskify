@@ -444,3 +444,25 @@ export default function TasksPage() {
     </div>
   );
 }
+
+// import { getProjectsByTeamIds } from "@/actions/project-action";
+// import { getTasksByTeam } from "@/actions/task-action";
+// import React from "react";
+
+// export default async function ProjectsPage({
+//   params,
+// }: {
+//   params: Promise<{ id: string }>;
+// }) {
+//   const { id } = await params;
+//   const tasks = await getTasksByTeam(id);
+//   console.log(tasks);
+//   return (
+//     <div>
+//       {/* <TaskCard data={tasks} /> */}
+//       {tasks.map((task) => (
+//         <div key={task.id}>{task.title}</div>
+//       ))}
+//     </div>
+//   );
+// }

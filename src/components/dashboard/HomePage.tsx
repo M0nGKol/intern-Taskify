@@ -209,9 +209,7 @@ export default function HomePage({ projectName }: HomePageProps) {
 
   const recentProjectsToShow = (
     showAllProjects ? recentProjects : recentProjects.slice(0, 5)
-  )
-    // ensure stable ordering by viewedAt desc when rendering
-    .sort((a, b) => (b.viewedAt || 0) - (a.viewedAt || 0));
+  ).sort((a, b) => (b.viewedAt || 0) - (a.viewedAt || 0));
 
   return (
     <div className="px-4 md:px-8">
@@ -394,7 +392,6 @@ export default function HomePage({ projectName }: HomePageProps) {
         </Card>
       </div>
 
-      {/* Modals for project actions */}
       {activeModal === "createProject" && (
         <CreateProjectModal
           isOpen={true}
