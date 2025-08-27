@@ -86,12 +86,13 @@ export async function createKanbanTask(
     const [newTask] = await db.insert(task).values({
       id: nanoid(),
       title: taskData.title,
-      description: `${taskData.description || ''}\nStatus: ${taskData.status}\nPriority: ${taskData.priority}`,
+      description: taskData.description || '',
       dueDate: taskData.dueDate,
       teamId: taskData.teamId,
       projectName: taskData.projectName,
       userId: taskData.userId,
       status: taskData.status,
+      priority: taskData.priority,
     }).returning();
 
     return newTask;

@@ -1,45 +1,43 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Calendar, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { useTaskManagement } from "@/lib/hooks/useTaskManagement";
-import { useCalendar } from "@/lib/hooks/useCalendar";
-import { CreateTaskModal } from "@/components/modals/create-task-modal";
-import { EditTaskModal } from "@/components/modals/edit-task-modal";
-import { DeleteTaskModal } from "@/components/modals/delete-task-modal";
 import { cn } from "@/lib/utils";
 import { TasksPageSkeleton } from "@/components/TasksPageSkeleton";
 import { Task } from "@/constants/data";
+import { CreateTaskModal } from "@/components/modals/create-task-modal";
+import { EditTaskModal } from "@/components/modals/edit-task-modal";
+import { DeleteTaskModal } from "@/components/modals/delete-task-modal";
+import { toast } from "sonner";
+import {
+  getAllTasks,
+  createTask as createTaskAction,
+  updateTask,
+  deleteTask,
+} from "@/actions/task-action";
+import { getAllProjects } from "@/actions/project-action";
+
+export type ViewType = "day" | "week" | "month" | "year";
+export type PriorityFilter = "all" | "high" | "medium" | "low";
 
 export default function TasksPage() {
-  const { tasks, isLoading, createTask, updateTaskById, deleteTaskById } =
-    useTaskManagement();
+  // Data state
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [projects, setProjects] = useState<
+    { id: string; name: string; teamId: string }[]
+  >([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const {
-    currentDate,
-    viewType,
-    priorityFilter,
-    projectFilter,
-    searchQuery,
-    projects,
-    taskSummary,
-    setViewType,
-    setPriorityFilter,
-    setProjectFilter,
-    setSearchQuery,
-    goToToday,
-    goToPrevious,
-    goToNext,
-    getWeekDates,
-    getTasksForDate,
-  } = useCalendar(tasks);
-
-  // Project switching
-  // const { teamId } = usePersistentProjectState();
+  // Calendar state
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewType, setViewType] = useState<ViewType>("week");
+  const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("all");
+  const [projectFilter, setProjectFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -48,7 +46,183 @@ export default function TasksPage() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   // Time slots for week view (24h)
-  const timeSlots = Array.from({ length: 24 }, (_, i) => i); // 00 → 23
+  const timeSlots = Array.from({ length: 24 }, (_, i) => i);
+
+  // Get current team ID from localStorage
+  const getCurrentTeamId = useCallback(() => {
+    try {
+      const stored = localStorage.getItem("taskify-dashboard");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return parsed.teamId || "";
+      }
+    } catch {}
+    return "";
+  }, []);
+
+  // Fetch data
+  const fetchData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+
+      // Fetch all tasks and projects in parallel
+      const [allTasks, allProjects] = await Promise.all([
+        getAllTasks(),
+        getAllProjects(),
+      ]);
+
+      setTasks(allTasks as Task[]);
+      setProjects(allProjects);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      toast.error("Failed to fetch data");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Load data on mount
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Extract priority from description (legacy support)
+  const extractPriorityFromDescription = (
+    description?: string | null
+  ): Task["priority"] => {
+    if (!description) return "medium";
+    const match = description.match(
+      /Priority:\s*(high|medium|low|hard|urgent|normal|minor)/i
+    );
+    const raw = match?.[1]?.toLowerCase();
+    switch (raw) {
+      case "high":
+      case "hard":
+      case "urgent":
+        return "high";
+      case "low":
+      case "minor":
+        return "low";
+      case "medium":
+      case "normal":
+        return "medium";
+      default:
+        return "medium";
+    }
+  };
+
+  // Get unique project names for filtering
+  const projectNames = useMemo(() => {
+    const projectSet = new Set<string>();
+    projects.forEach((project) => projectSet.add(project.name));
+    tasks.forEach((task) => {
+      if (task.projectName) {
+        projectSet.add(task.projectName);
+      }
+    });
+    return Array.from(projectSet);
+  }, [tasks, projects]);
+
+  // Filter tasks based on current filters
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((task) => {
+      const taskPriority =
+        task.priority || extractPriorityFromDescription(task.description);
+      const matchesPriority =
+        priorityFilter === "all" || taskPriority === priorityFilter;
+      const matchesProject =
+        projectFilter === "all" || task.projectName === projectFilter;
+      const matchesSearch =
+        searchQuery === "" ||
+        task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (task.description &&
+          task.description.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      return matchesPriority && matchesProject && matchesSearch;
+    });
+  }, [tasks, priorityFilter, projectFilter, searchQuery]);
+
+  // Calendar navigation
+  const goToToday = () => setCurrentDate(new Date());
+
+  const goToPrevious = () => {
+    const newDate = new Date(currentDate);
+    if (viewType === "week") {
+      newDate.setDate(newDate.getDate() - 7);
+    } else if (viewType === "month") {
+      newDate.setMonth(newDate.getMonth() - 1);
+    } else if (viewType === "day") {
+      newDate.setDate(newDate.getDate() - 1);
+    }
+    setCurrentDate(newDate);
+  };
+
+  const goToNext = () => {
+    const newDate = new Date(currentDate);
+    if (viewType === "week") {
+      newDate.setDate(newDate.getDate() + 7);
+    } else if (viewType === "month") {
+      newDate.setMonth(newDate.getMonth() + 1);
+    } else if (viewType === "day") {
+      newDate.setDate(newDate.getDate() + 1);
+    }
+    setCurrentDate(newDate);
+  };
+
+  // Get week dates for week view
+  const getWeekDates = () => {
+    const startOfWeek = new Date(currentDate);
+    const day = startOfWeek.getDay();
+    startOfWeek.setDate(startOfWeek.getDate() - day);
+
+    const dates = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startOfWeek);
+      date.setDate(date.getDate() + i);
+      dates.push(date);
+    }
+    return dates;
+  };
+
+  // Get tasks for a specific date
+  const getTasksForDate = (date: Date) => {
+    const tasksForDate = filteredTasks.filter((task) => {
+      if (!task.dueDate) return false;
+      const taskDate = new Date(task.dueDate);
+      return taskDate.toDateString() === date.toDateString();
+    });
+
+    // Sort tasks by time
+    return tasksForDate.sort((a, b) => {
+      if (!a.dueDate || !b.dueDate) return 0;
+      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+    });
+  };
+
+  // Get task summary statistics
+  const taskSummary = useMemo(() => {
+    const total = filteredTasks.length;
+    const completed = filteredTasks.filter(
+      (task) => task.status === "completed"
+    ).length;
+    const highPriority = filteredTasks.filter((task) => {
+      const priority =
+        task.priority || extractPriorityFromDescription(task.description);
+      return priority === "high";
+    }).length;
+    const mediumPriority = filteredTasks.filter((task) => {
+      const priority =
+        task.priority || extractPriorityFromDescription(task.description);
+      return priority === "medium";
+    }).length;
+    const lowPriority = filteredTasks.filter((task) => {
+      const priority =
+        task.priority || extractPriorityFromDescription(task.description);
+      return priority === "low";
+    }).length;
+
+    return { total, completed, highPriority, mediumPriority, lowPriority };
+  }, [filteredTasks]);
 
   // Handle task actions
   const handleCreateTask = async (taskData: {
@@ -57,8 +231,27 @@ export default function TasksPage() {
     dueDate?: Date;
     priority: "high" | "medium" | "low";
   }) => {
-    await createTask(taskData);
-    setIsCreateModalOpen(false);
+    try {
+      const teamId = getCurrentTeamId();
+      if (!teamId) {
+        toast.error("No project selected");
+        return;
+      }
+
+      await createTaskAction({
+        ...taskData,
+        teamId,
+        status: "opens",
+        projectName: projectFilter !== "all" ? projectFilter : undefined,
+      });
+
+      toast.success("Task created successfully");
+      await fetchData(); // Refresh data
+      setIsCreateModalOpen(false);
+    } catch (error) {
+      console.error("Error creating task:", error);
+      toast.error("Failed to create task");
+    }
   };
 
   const handleEditTask = async (taskData: {
@@ -67,18 +260,36 @@ export default function TasksPage() {
     dueDate?: Date;
     priority: "high" | "medium" | "low";
   }) => {
-    if (selectedTask) {
-      await updateTaskById(selectedTask.id, taskData, selectedTask.status);
+    if (!selectedTask) return;
+
+    try {
+      await updateTask(selectedTask.id, {
+        ...taskData,
+        status: selectedTask.status,
+      });
+
+      toast.success("Task updated successfully");
+      await fetchData(); // Refresh data
       setIsEditModalOpen(false);
       setSelectedTask(null);
+    } catch (error) {
+      console.error("Error updating task:", error);
+      toast.error("Failed to update task");
     }
   };
 
   const handleDeleteTask = async () => {
-    if (selectedTask) {
-      await deleteTaskById(selectedTask.id);
+    if (!selectedTask) return;
+
+    try {
+      await deleteTask(selectedTask.id);
+      toast.success("Task deleted successfully");
+      await fetchData(); // Refresh data
       setIsDeleteModalOpen(false);
       setSelectedTask(null);
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      toast.error("Failed to delete task");
     }
   };
 
@@ -139,7 +350,7 @@ export default function TasksPage() {
             >
               All Projects
             </div>
-            {projects.map((project) => (
+            {projectNames.map((project) => (
               <div
                 key={project}
                 className={cn(
@@ -252,7 +463,6 @@ export default function TasksPage() {
                 />
               </div>
               <Button onClick={() => setIsCreateModalOpen(true)}>
-                {/* <Plus className="h-4 w-4 mr-2" /> */}
                 New Task
               </Button>
             </div>
@@ -314,6 +524,9 @@ export default function TasksPage() {
                             ? new Date(task.dueDate).getHours()
                             : 0;
                           if (taskHour === hour) {
+                            const priority =
+                              task.priority ||
+                              extractPriorityFromDescription(task.description);
                             return (
                               <div
                                 key={task.id}
@@ -329,10 +542,9 @@ export default function TasksPage() {
                                 <div className="flex items-center space-x-1 mt-1">
                                   <div
                                     className={cn("w-2 h-2 rounded-full", {
-                                      "bg-red-500": task.priority === "high",
-                                      "bg-yellow-500":
-                                        task.priority === "medium",
-                                      "bg-green-500": task.priority === "low",
+                                      "bg-red-500": priority === "high",
+                                      "bg-yellow-500": priority === "medium",
+                                      "bg-green-500": priority === "low",
                                     })}
                                   />
                                   <span className="text-xs">
@@ -371,52 +583,66 @@ export default function TasksPage() {
                 })}
               </h2>
               <div className="space-y-4">
-                {getTasksForDate(currentDate).map((task) => (
-                  <Card
-                    key={task.id}
-                    className="cursor-pointer hover:shadow-md transition-shadow"
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div
-                            className={cn("w-3 h-3 rounded-full", {
-                              "bg-red-500": task.priority === "high",
-                              "bg-yellow-500": task.priority === "medium",
-                              "bg-green-500": task.priority === "low",
-                            })}
-                          />
-                          <div>
-                            <h3 className="font-medium text-gray-900">
-                              {task.title}
-                            </h3>
-                            {task.description && (
-                              <p className="text-sm text-gray-600 mt-1">
-                                {task.description}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          {task.dueDate && (
-                            <div className="flex items-center text-sm text-gray-500">
-                              <Calendar className="h-4 w-4 mr-1" />
-                              {new Date(task.dueDate).toLocaleTimeString(
-                                "en-US",
-                                {
-                                  hour: "numeric",
-                                  minute: "2-digit",
-                                  hour12: true,
-                                }
+                {getTasksForDate(currentDate).map((task) => {
+                  const priority =
+                    task.priority ||
+                    extractPriorityFromDescription(task.description);
+                  return (
+                    <Card
+                      key={task.id}
+                      className="cursor-pointer hover:shadow-md transition-shadow"
+                      onClick={() => {
+                        setSelectedTask(task);
+                        setIsEditModalOpen(true);
+                      }}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div
+                              className={cn("w-3 h-3 rounded-full", {
+                                "bg-red-500": priority === "high",
+                                "bg-yellow-500": priority === "medium",
+                                "bg-green-500": priority === "low",
+                              })}
+                            />
+                            <div>
+                              <h3 className="font-medium text-gray-900">
+                                {task.title}
+                              </h3>
+                              {task.description && (
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {task.description}
+                                </p>
+                              )}
+                              {task.projectName && (
+                                <p className="text-xs text-blue-600 mt-1">
+                                  {task.projectName}
+                                </p>
                               )}
                             </div>
-                          )}
-                          <Badge variant="outline">{task.status}</Badge>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            {task.dueDate && (
+                              <div className="flex items-center text-sm text-gray-500">
+                                <Calendar className="h-4 w-4 mr-1" />
+                                {new Date(task.dueDate).toLocaleTimeString(
+                                  "en-US",
+                                  {
+                                    hour: "numeric",
+                                    minute: "2-digit",
+                                    hour12: true,
+                                  }
+                                )}
+                              </div>
+                            )}
+                            <Badge variant="outline">{task.status}</Badge>
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </div>
           )}
