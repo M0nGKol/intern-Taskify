@@ -30,33 +30,22 @@ export default function HomeHeader({
   const { currentDate, greeting } = useDashboardDateTime();
   const router = useRouter();
 
-  // Handle project creation - redirect to dashboard with the new project
   const handleProjectCreated = (name: string, teamId: string) => {
     toast.success("Project created successfully!");
-    // Redirect to dashboard with the new project selected
     router.push(`/dashboard?project=${teamId}`);
-    router.refresh(); // Refresh to get updated projects list
+    router.refresh();
   };
 
-  // Handle project join - redirect to dashboard with the joined project
   const handleProjectJoined = (name: string, teamId: string) => {
     toast.success(`Successfully joined project: ${name}`);
-    // Redirect to dashboard with the joined project selected
     router.push(`/dashboard?project=${teamId}`);
-    router.refresh(); // Refresh to get updated projects list
+    router.refresh();
   };
-
-  // Handle project selection from existing projects
-  const handleProjectSelect = (project: Project) => {
-    router.push(`/dashboard?project=${project.teamId}`);
-  };
-
   const hasProjects = projects.length > 0;
   const showProjectInfo = selectedProject && hasProjects;
 
   return (
     <div>
-      {/* Header */}
       <div className="px-12 py-8">
         <div className="flex justify-between items-start">
           <div className="text-center flex-1">
@@ -71,29 +60,6 @@ export default function HomeHeader({
               <>
                 <CreateProjectModal onProjectCreated={handleProjectCreated} />
                 <JoinTeamModal onProjectJoined={handleProjectJoined} />
-                {/* Show project selector if user has projects but none selected */}
-                {hasProjects && (
-                  <select
-                    onChange={(e) => {
-                      const projectId = e.target.value;
-                      if (projectId) {
-                        const project = projects.find(
-                          (p) => p.teamId === projectId
-                        );
-                        if (project) handleProjectSelect(project);
-                      }
-                    }}
-                    className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-                    defaultValue=""
-                  >
-                    <option value="">Select a project...</option>
-                    {projects.map((project) => (
-                      <option key={project.id} value={project.teamId}>
-                        {project.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
               </>
             ) : (
               <>

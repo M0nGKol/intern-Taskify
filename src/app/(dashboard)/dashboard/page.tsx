@@ -1,26 +1,21 @@
-import React from "react";
+import React, { Suspense } from "react";
 import HomeHeader from "@/components/HomeHeader";
 import { getAllProjects } from "@/actions/project-action";
 import DashboardContent from "../../../components/dashboard/DashboardContent";
 import WelcomePage from "@/components/dashboard/WelcomePage";
+import { HomePageSkeleton } from "@/components/HomePageSkeleton";
 
-// Force dynamic rendering to ensure URL parameter changes trigger re-renders
 export const dynamic = "force-dynamic";
 
 interface DashboardPageProps {
-  searchParams: Promise<{ project?: string }>; // Make searchParams a Promise
+  searchParams: Promise<{ project?: string }>;
 }
 
-export default async function DashboardPage({
-  searchParams,
-}: DashboardPageProps) {
-  // Await the searchParams Promise
+async function DashboardPageContent({ searchParams }: DashboardPageProps) {
   const resolvedSearchParams = await searchParams;
 
-  // Fetch all user projects from the server
   const projects = await getAllProjects();
 
-  // Get the selected project from URL params
   const selectedProjectId = resolvedSearchParams.project;
   let selectedProject = null;
 
@@ -42,9 +37,17 @@ export default async function DashboardPage({
             selectedProject={selectedProject}
           />
         ) : (
-          <DashboardContent projects={projects} />
+          <DashboardContent projects={projects} selectedProject={projects[0]} />
         )}
       </div>
     </div>
+  );
+}
+
+export default function DashboardPage({ searchParams }: DashboardPageProps) {
+  return (
+    <Suspense fallback={<HomePageSkeleton />}>
+      <DashboardPageContent searchParams={searchParams} />
+    </Suspense>
   );
 }

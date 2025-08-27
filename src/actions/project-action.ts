@@ -44,7 +44,6 @@ async function resolveProjectId(projectKey: string): Promise<string | null> {
 
 export async function getAllProjects(): Promise<Project[]> {
   try {
-    // Get the current user session
     const session = await auth.api.getSession({
       headers: await headers(),
     });
@@ -55,7 +54,6 @@ export async function getAllProjects(): Promise<Project[]> {
 
     const userId = session.user.id;
 
-    // Get projects where the user is a member
     const userProjects = await db
       .select({
         id: project.id,

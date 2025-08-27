@@ -1,60 +1,53 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Calendar, Clock } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
 import { getTasksByTeam } from "@/actions/task-action";
 import { getAllProjects } from "@/actions/project-action";
-import { CreateProjectModal } from "../modals/create-project-modal";
-import { JoinTeamModal } from "../modals/join-team-modal";
-import { useRouter, useSearchParams } from "next/navigation";
+import {
+  getTaskCountsForAllProjects,
+  ProjectTaskCounts,
+} from "@/actions/task-action";
+import { Task, Project } from "@/db/schema";
 import { toast } from "sonner";
+import { HomePageSkeleton } from "@/components/HomePageSkeleton";
 
-interface Project {
-  id: string;
-  name: string;
-  teamId: string;
-  description?: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-interface Task {
-  id: string;
-  title: string;
-  description?: string | null;
-  dueDate?: Date | null;
-  teamId: string;
-  projectName?: string | null;
-  userId?: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-// Fix the interface - remove unused props
 interface HomePageProps {
   projectName: string;
   teamId: string;
 }
 
-export default function HomePage({
-  projectName,
-  teamId: currentTeamId,
-}: HomePageProps) {
+export default function HomePage({ teamId: currentTeamId }: HomePageProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [projectTaskCounts, setProjectTaskCounts] = useState<
+    Record<string, ProjectTaskCounts>
+  >({});
   const [isLoading, setIsLoading] = useState(true);
+  const [isProjectSwitching, setIsProjectSwitching] = useState(false);
   const [monthDate] = useState<Date>(new Date());
   const [showAllProjects, setShowAllProjects] = useState(false);
 
-  // Get the currently selected project from URL parameters
-  const currentProjectFromUrl = searchParams.get("project");
+  const switchToProject = async (project: Project) => {
+    if (project.teamId === currentTeamId) return;
 
-  // Fetch data when component mounts or teamId changes
+    try {
+      setIsProjectSwitching(true);
+
+      // Navigate to the new project
+      router.push(`/dashboard?project=${project.teamId}`);
+    } catch (error) {
+      console.error("Error switching projects:", error);
+      toast.error("Failed to switch project");
+      setIsProjectSwitching(false);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -63,86 +56,36 @@ export default function HomePage({
           getTasksByTeam(currentTeamId),
           getAllProjects(),
         ]);
+
         setTasks(projectTasks);
         setProjects(allProjects);
+
+        // Fetch task counts for all projects
+        if (allProjects.length > 0) {
+          const projectsData = allProjects.map((p) => ({
+            teamId: p.teamId,
+            name: p.name,
+          }));
+          const taskCounts = await getTaskCountsForAllProjects(projectsData);
+          setProjectTaskCounts(taskCounts);
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
         toast.error("Failed to load data");
       } finally {
         setIsLoading(false);
+        setIsProjectSwitching(false);
       }
     };
 
     fetchData();
   }, [currentTeamId]);
 
-  // Handle project creation - Updated to use URL navigation
-  const handleProjectCreated = (name: string, teamId: string) => {
-    // Update URL to switch to the new project, which will trigger HomeHeader update
-    router.push(`/dashboard?project=${teamId}`);
-    router.refresh(); // Force refresh to ensure server component re-renders
-    toast.success("Project created successfully!");
-  };
+  if (isLoading || isProjectSwitching) {
+    return <HomePageSkeleton />;
+  }
 
-  // Handle project join - Updated to use URL navigation
-  const handleProjectJoined = (name: string, teamId: string) => {
-    // Update URL to switch to the joined project, which will trigger HomeHeader update
-    router.push(`/dashboard?project=${teamId}`);
-    router.refresh(); // Force refresh to ensure server component re-renders
-    toast.success(`Successfully joined project: ${name}`);
-  };
-
-  // Handle project switch - Updated to use URL navigation with refresh
-  const handleProjectSwitch = (name: string, teamId: string) => {
-    // Update URL to switch project, which will trigger HomeHeader update
-    router.push(`/dashboard?project=${teamId}`);
-    router.refresh(); // Force refresh to ensure server component re-renders
-  };
-
-  // Generate calendar data from tasks
-  const { countsByDate, maxCount } = useMemo(() => {
-    const map = new Map<string, number>();
-    let localMax = 0;
-
-    const startOfMonth = new Date(
-      monthDate.getFullYear(),
-      monthDate.getMonth(),
-      1
-    );
-    const endOfMonth = new Date(
-      monthDate.getFullYear(),
-      monthDate.getMonth() + 1,
-      0
-    );
-
-    tasks.forEach((task) => {
-      if (task.dueDate) {
-        const taskDate = new Date(task.dueDate);
-        if (taskDate >= startOfMonth && taskDate <= endOfMonth) {
-          const dateKey = taskDate.toISOString().slice(0, 10);
-          const currentCount = map.get(dateKey) || 0;
-          const newCount = currentCount + 1;
-          map.set(dateKey, newCount);
-          if (newCount > localMax) localMax = newCount;
-        }
-      }
-    });
-
-    return { countsByDate: map, maxCount: localMax };
-  }, [tasks, monthDate]);
-
-  // Process upcoming tasks
-  const upcomingTasks = useMemo(() => {
-    return tasks
-      .filter((task) => task.dueDate && new Date(task.dueDate) > new Date())
-      .sort(
-        (a, b) =>
-          new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime()
-      )
-      .slice(0, 5);
-  }, [tasks]);
-
-  // Helper functions (same as before)
+  // Helper functions
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "high":
@@ -184,6 +127,7 @@ export default function HomePage({
         return "low";
       case "medium":
       case "normal":
+        return "medium";
       default:
         return "medium";
     }
@@ -197,115 +141,124 @@ export default function HomePage({
     });
   };
 
-  const getCellClass = (count: number) => {
-    if (!count || count <= 0) return "bg-gray-100";
-    const ratio = count / Math.max(1, maxCount);
-    if (ratio <= 0.25) return "bg-blue-100";
-    if (ratio <= 0.5) return "bg-blue-200";
-    if (ratio <= 0.75) return "bg-blue-400";
-    return "bg-blue-600";
-  };
+  const upcomingTasks = tasks
+    .filter((task) => task.dueDate && new Date(task.dueDate) > new Date())
+    .sort(
+      (a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime()
+    )
+    .slice(0, 5);
 
-  const getTextClass = (count: number) => {
-    const ratio = count / Math.max(1, maxCount);
-    return ratio > 0.5 ? "text-white" : "text-gray-700";
-  };
-
-  // Calendar helpers
-  const startOfMonth = new Date(
-    monthDate.getFullYear(),
-    monthDate.getMonth(),
-    1
+  const recentProjectsToShow = (
+    showAllProjects ? projects : projects.slice(0, 5)
+  ).sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
   );
-  const endOfMonth = new Date(
-    monthDate.getFullYear(),
-    monthDate.getMonth() + 1,
-    0
-  );
-  const startDay = startOfMonth.getDay();
-  const daysInMonth = endOfMonth.getDate();
-  const projectsToShow = showAllProjects ? projects : projects.slice(0, 5);
 
-  if (isLoading) {
+  // Helper function to render task count badges
+  const renderTaskCounts = (teamId: string) => {
+    const counts = projectTaskCounts[teamId];
+    if (!counts) return null;
+
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading {projectName}...</p>
-        </div>
+      <div className="flex gap-1 mt-2 flex-wrap">
+        <Badge variant="outline" className="text-xs px-2 py-0.5 bg-gray-100">
+          Total: {counts.totalTasks}
+        </Badge>
+        <Badge
+          variant="outline"
+          className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700"
+        >
+          In Progress: {counts.inProgressTasks}
+        </Badge>
+        <Badge
+          variant="outline"
+          className="text-xs px-2 py-0.5 bg-green-100 text-green-700"
+        >
+          Done: {counts.doneTasks}
+        </Badge>
       </div>
     );
-  }
+  };
 
   return (
     <div className="px-4 md:px-8">
-      {/* Header - Conditional based on project state */}
-      <div className="flex items-center justify-end py-4 mb-6 gap-4">
-        <CreateProjectModal onProjectCreated={handleProjectCreated} />
-        <JoinTeamModal onProjectJoined={handleProjectJoined} />
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-[repeat(2,1fr)] gap-6 p-4 h-screen">
-        {/* Switch Project Section */}
+        {/* Recent Projects Section */}
         <Card className="border-2 border-slate-300 flex flex-col">
           <CardHeader className="pb-4">
-            <CardTitle className="text-xl font-semibold text-slate-700">
-              Switch Project
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xl font-semibold text-slate-700">
+                Projects
+              </CardTitle>
+            </div>
           </CardHeader>
+
           <CardContent className="flex-1 space-y-4 overflow-y-auto">
             {projects.length > 0 ? (
               <div className="space-y-3">
-                {projectsToShow.map((project) => (
+                {recentProjectsToShow.map((project) => (
                   <div
                     key={project.id}
-                    className={`p-3 border rounded-lg hover:bg-gray-50 cursor-pointer ${
-                      project.teamId === currentProjectFromUrl
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200"
+                    className={`p-3 border rounded-lg cursor-pointer transition-all duration-200 ${
+                      project.teamId === currentTeamId
+                        ? "bg-blue-50 border-blue-200 ring-2 ring-blue-100"
+                        : "border-gray-200 hover:bg-gray-50 hover:border-gray-300"
                     }`}
-                    onClick={() =>
-                      handleProjectSwitch(project.name, project.teamId)
-                    }
+                    onClick={() => switchToProject(project)}
                   >
-                    <h4 className="font-medium text-slate-800 truncate">
-                      {project.name}
-                    </h4>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-medium text-slate-800 truncate">
+                          {project.name}
+                        </h4>
+                        {project.teamId === currentTeamId && (
+                          <Badge className="bg-blue-500 text-white text-xs px-2 py-1">
+                            Current
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-gray-500 ml-2 whitespace-nowrap">
+                        {new Date(project.updatedAt).toLocaleDateString(
+                          "en-US",
+                          {
+                            month: "short",
+                            day: "numeric",
+                          }
+                        )}
+                      </div>
+                    </div>
                     <div className="text-xs text-slate-500 mt-1">
                       Team: {project.teamId}
                     </div>
-                    {project.description && (
-                      <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-                        {project.description}
-                      </p>
-                    )}
+                    {renderTaskCounts(project.teamId)}
                   </div>
                 ))}
+
                 {projects.length > 5 && (
-                  <Button
-                    variant="ghost"
-                    className="w-full text-blue-600 hover:underline"
-                    onClick={() => setShowAllProjects((v) => !v)}
-                  >
-                    {showAllProjects
-                      ? "See less"
-                      : `See ${projects.length - 5} more`}
-                  </Button>
+                  <div className="pt-1">
+                    <Button
+                      variant="ghost"
+                      className="w-full text-blue-600 hover:underline"
+                      onClick={() => setShowAllProjects((v) => !v)}
+                    >
+                      {showAllProjects ? "See less" : "See more"}
+                    </Button>
+                  </div>
                 )}
               </div>
             ) : (
               <div className="text-center text-slate-400 py-8">
-                <p>No projects available</p>
+                <p>No projects yet</p>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Upcoming Work */}
+        {/* Upcoming Work Section */}
         <Card className="border-2 border-slate-300 lg:row-span-2 flex flex-col">
           <CardHeader>
             <CardTitle className="text-xl font-semibold text-slate-700">
-              Upcoming Work ({upcomingTasks.length})
+              Upcoming Work ({upcomingTasks.length} tasks)
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 overflow-y-auto">
@@ -314,7 +267,7 @@ export default function HomePage({
                 {upcomingTasks.map((task) => (
                   <div
                     key={task.id}
-                    className="p-3 border border-gray-200 rounded-lg"
+                    className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-start justify-between mb-2">
                       <Badge
@@ -324,16 +277,21 @@ export default function HomePage({
                       >
                         {extractPriorityFromDescription(task.description)}
                       </Badge>
+                      <span className="text-xs text-gray-400">
+                        {task.projectName && `${task.projectName}`}
+                      </span>
                     </div>
-                    <h4 className="font-medium text-slate-800 mb-1">
+                    <h4 className="font-medium text-slate-800 mb-1 line-clamp-2">
                       {task.title}
                     </h4>
-                    <p className="text-sm text-gray-600 mb-2 break-words overflow-hidden">
+                    <p className="text-sm text-gray-600 mb-2 break-words overflow-hidden line-clamp-2">
                       {cleanDescription(task.description)}
                     </p>
-                    <div className="flex items-center text-xs text-gray-500">
-                      <Calendar className="w-3 h-3 mr-1" />
-                      <span>{formatDate(task.dueDate)}</span>
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <div className="flex items-center">
+                        <Calendar className="w-3 h-3 mr-1" />
+                        <span>{formatDate(task.dueDate)}</span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -343,74 +301,40 @@ export default function HomePage({
                 <div className="text-center text-slate-400">
                   <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p>No upcoming work scheduled</p>
+                  <p className="text-xs mt-1">
+                    Create tasks with due dates to see them here
+                  </p>
                 </div>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Calendar */}
+        {/* Calendar Section */}
         <Card className="border-2 border-slate-300 flex flex-col">
           <CardHeader>
             <CardTitle className="text-xl font-semibold text-slate-700">
-              Calendar -{" "}
-              {monthDate.toLocaleDateString("en-US", {
-                month: "long",
-                year: "numeric",
-              })}
+              Calendar
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1">
-            <div className="grid grid-cols-7 gap-1 text-[10px] text-center text-slate-500 mb-1">
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-                <div key={d}>{d}</div>
-              ))}
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm font-medium text-slate-700">
+                {monthDate.toLocaleDateString("en-US", {
+                  month: "long",
+                  year: "numeric",
+                })}
+              </div>
             </div>
-            <div className="grid grid-cols-7 gap-1">
-              {Array.from({ length: startDay }).map((_, idx) => (
-                <div key={`blank-${idx}`} className="h-7 w-7" />
-              ))}
-              {Array.from({ length: daysInMonth }).map((_, i) => {
-                const day = i + 1;
-                const date = new Date(
-                  monthDate.getFullYear(),
-                  monthDate.getMonth(),
-                  day
-                );
-                const key = date.toISOString().slice(0, 10);
-                const count = countsByDate.get(key) || 0;
-                return (
-                  <div
-                    key={key}
-                    title={`${count} task${count === 1 ? "" : "s"}`}
-                    className={`h-7 w-7 rounded flex items-center justify-center text-[10px] ${getCellClass(
-                      count
-                    )} ${getTextClass(count)}`}
-                  >
-                    {day}
-                  </div>
-                );
-              })}
+
+            {/* Calendar grid would go here */}
+            <div className="text-center text-slate-400 py-8">
+              <Calendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">Calendar view coming soon</p>
             </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Modals */}
-      {/* {activeModal === "createProject" && (
-        <CreateProjectModal
-          isOpen={true}
-          onClose={closeModal}
-          onProjectCreated={handleProjectCreated}
-        />
-      )}
-      {activeModal === "joinTeam" && (
-        <JoinTeamModal
-          isOpen={true}
-          onClose={closeModal}
-          onProjectJoined={handleProjectJoined}
-        />
-      )} */}
     </div>
   );
 }

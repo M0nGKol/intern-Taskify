@@ -65,6 +65,7 @@ export const verification = pgTable("verification", {
   ),
 });
 
+
 export const task = pgTable("task", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
@@ -74,6 +75,7 @@ export const task = pgTable("task", {
   teamId: text("team_id").notNull(),
   projectName: text("project_name"),
   status: text("status").notNull().default('opens'),
+  priority: text("priority").notNull().default('medium'),
   userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").$defaultFn(() => new Date()).notNull(),
   updatedAt: timestamp("updated_at").$defaultFn(() => new Date()).notNull(),

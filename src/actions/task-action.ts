@@ -264,3 +264,62 @@ export async function getTaskCountsByDate(
     throw new Error('Failed to fetch task counts by date');
   }
 }
+
+export interface ProjectTaskCounts {
+  teamId: string;
+  projectName?: string;
+  totalTasks: number;
+  inProgressTasks: number;
+  doneTasks: number;
+}
+
+export async function getTaskCountsByProject(teamId: string, projectName?: string): Promise<ProjectTaskCounts> {
+  try {
+    const whereCondition = projectName
+      ? and(eq(task.teamId, teamId), eq(task.projectName, projectName))
+      : eq(task.teamId, teamId);
+
+    const tasks = await db
+      .select()
+      .from(task)
+      .where(whereCondition);
+
+    const totalTasks = tasks.length;
+    const doneTasks = tasks.filter(t => t.status === "done").length;
+    const inProgressTasks = totalTasks - doneTasks;
+
+    return {
+      teamId,
+      projectName,
+      totalTasks,
+      inProgressTasks,
+      doneTasks,
+    };
+  } catch (error) {
+    console.error("Error fetching task counts:", error);
+    throw new Error("Failed to fetch task counts");
+  }
+}
+
+export async function getTaskCountsForAllProjects(projects: { teamId: string; name: string }[]): Promise<Record<string, ProjectTaskCounts>> {
+  try {
+    const results: Record<string, ProjectTaskCounts> = {};
+    
+    // Fetch task counts for each project in parallel
+    const promises = projects.map(async (project) => {
+      const counts = await getTaskCountsByProject(project.teamId, project.name);
+      return { key: project.teamId, counts };
+    });
+    
+    const resolvedCounts = await Promise.all(promises);
+    
+    resolvedCounts.forEach(({ key, counts }) => {
+      results[key] = counts;
+    });
+    
+    return results;
+  } catch (error) {
+    console.error('Error fetching task counts for all projects:', error);
+    throw new Error('Failed to fetch task counts for all projects');
+  }
+}
