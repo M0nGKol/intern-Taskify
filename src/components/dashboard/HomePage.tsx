@@ -1,14 +1,25 @@
-import React, { useState, useEffect } from "react";
-import { Calendar, Clock, Plus } from "lucide-react";
+"use client";
+
+import React, { useState, useEffect, useMemo } from "react";
+import { Calendar, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
-import { getTasksByTeam, getTaskCountsByDate } from "@/actions/task-action";
-import { usePersistentProjectState } from "@/lib/hooks/usePersistentProjectState";
-import { toast } from "sonner";
 import { Button } from "../ui/button";
+import { getTasksByTeam } from "@/actions/task-action";
+import { getAllProjects } from "@/actions/project-action";
 import { CreateProjectModal } from "../modals/create-project-modal";
 import { JoinTeamModal } from "../modals/join-team-modal";
-import { HomePageSkeleton } from "../HomePageSkeleton";
+import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
+
+interface Project {
+  id: string;
+  name: string;
+  teamId: string;
+  description?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 interface Task {
   id: string;
@@ -22,129 +33,116 @@ interface Task {
   updatedAt: Date;
 }
 
+// Fix the interface - remove unused props
 interface HomePageProps {
   projectName: string;
+  teamId: string;
 }
 
-export default function HomePage({ projectName }: HomePageProps) {
-  const { teamId, setProject, recentProjects } = usePersistentProjectState();
+export default function HomePage({
+  projectName,
+  teamId: currentTeamId,
+}: HomePageProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeModal, setActiveModal] = useState<string | null>(null);
   const [monthDate] = useState<Date>(new Date());
-  const [countsByDate, setCountsByDate] = useState<Map<string, number>>(
-    new Map()
-  );
-  const [maxCount, setMaxCount] = useState(0);
   const [showAllProjects, setShowAllProjects] = useState(false);
 
-  const openCreateProject = () => setActiveModal("createProject");
-  const openJoinTeam = () => setActiveModal("joinTeam");
-  const closeModal = () => setActiveModal(null);
+  // Get the currently selected project from URL parameters
+  const currentProjectFromUrl = searchParams.get("project");
 
-  const handleProjectCreated = (payload: {
-    projectName: string;
-    teamId: string;
-  }) => {
-    setProject(payload.projectName, payload.teamId);
-    closeModal();
-  };
-
-  const handleProjectJoined = (payload: {
-    projectName: string;
-    teamId: string;
-  }) => {
-    setProject(payload.projectName, payload.teamId);
-    closeModal();
-  };
-
+  // Fetch data when component mounts or teamId changes
   useEffect(() => {
-    const fetchTasks = async () => {
-      if (!teamId) return;
-
+    const fetchData = async () => {
       try {
         setIsLoading(true);
-        const fetchedTasks = await getTasksByTeam(teamId);
-        setTasks(fetchedTasks);
+        const [projectTasks, allProjects] = await Promise.all([
+          getTasksByTeam(currentTeamId),
+          getAllProjects(),
+        ]);
+        setTasks(projectTasks);
+        setProjects(allProjects);
       } catch (error) {
-        console.error("Error fetching tasks:", error);
-        toast.error("Failed to fetch tasks");
+        console.error("Error fetching data:", error);
+        toast.error("Failed to load data");
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchTasks();
-  }, [teamId]);
+    fetchData();
+  }, [currentTeamId]);
 
-  // Heatmap calendar helpers
-  const startOfMonth = new Date(
-    monthDate.getFullYear(),
-    monthDate.getMonth(),
-    1
-  );
-  const endOfMonth = new Date(
-    monthDate.getFullYear(),
-    monthDate.getMonth() + 1,
-    0
-  );
-  const startDay = startOfMonth.getDay();
-  const daysInMonth = endOfMonth.getDate();
+  // Handle project creation - Updated to use URL navigation
+  const handleProjectCreated = (name: string, teamId: string) => {
+    // Update URL to switch to the new project, which will trigger HomeHeader update
+    router.push(`/dashboard?project=${teamId}`);
+    router.refresh(); // Force refresh to ensure server component re-renders
+    toast.success("Project created successfully!");
+  };
 
-  useEffect(() => {
-    const loadCounts = async () => {
-      if (!teamId) return;
-      try {
-        const start = new Date(
-          monthDate.getFullYear(),
-          monthDate.getMonth(),
-          1
-        );
-        const end = new Date(
-          monthDate.getFullYear(),
-          monthDate.getMonth() + 1,
-          1
-        );
-        const rows = await getTaskCountsByDate(
-          teamId,
-          start,
-          end,
-          projectName || undefined
-        );
+  // Handle project join - Updated to use URL navigation
+  const handleProjectJoined = (name: string, teamId: string) => {
+    // Update URL to switch to the joined project, which will trigger HomeHeader update
+    router.push(`/dashboard?project=${teamId}`);
+    router.refresh(); // Force refresh to ensure server component re-renders
+    toast.success(`Successfully joined project: ${name}`);
+  };
 
-        const map = new Map<string, number>();
-        let localMax = 0;
-        for (const r of rows) {
-          map.set(r.date, r.count);
-          if (r.count > localMax) localMax = r.count;
+  // Handle project switch - Updated to use URL navigation with refresh
+  const handleProjectSwitch = (name: string, teamId: string) => {
+    // Update URL to switch project, which will trigger HomeHeader update
+    router.push(`/dashboard?project=${teamId}`);
+    router.refresh(); // Force refresh to ensure server component re-renders
+  };
+
+  // Generate calendar data from tasks
+  const { countsByDate, maxCount } = useMemo(() => {
+    const map = new Map<string, number>();
+    let localMax = 0;
+
+    const startOfMonth = new Date(
+      monthDate.getFullYear(),
+      monthDate.getMonth(),
+      1
+    );
+    const endOfMonth = new Date(
+      monthDate.getFullYear(),
+      monthDate.getMonth() + 1,
+      0
+    );
+
+    tasks.forEach((task) => {
+      if (task.dueDate) {
+        const taskDate = new Date(task.dueDate);
+        if (taskDate >= startOfMonth && taskDate <= endOfMonth) {
+          const dateKey = taskDate.toISOString().slice(0, 10);
+          const currentCount = map.get(dateKey) || 0;
+          const newCount = currentCount + 1;
+          map.set(dateKey, newCount);
+          if (newCount > localMax) localMax = newCount;
         }
-        setCountsByDate(map);
-        setMaxCount(localMax);
-      } catch (err) {
-        console.error("Error loading task counts:", err);
       }
-    };
-    loadCounts();
-  }, [teamId, projectName, monthDate]);
+    });
 
-  if (isLoading) {
-    return <HomePageSkeleton />;
-  }
+    return { countsByDate: map, maxCount: localMax };
+  }, [tasks, monthDate]);
 
-  const getCellClass = (count: number) => {
-    if (!count || count <= 0) return "bg-gray-100";
-    const ratio = count / Math.max(1, maxCount);
-    if (ratio <= 0.25) return "bg-blue-100";
-    if (ratio <= 0.5) return "bg-blue-200";
-    if (ratio <= 0.75) return "bg-blue-400";
-    return "bg-blue-600";
-  };
+  // Process upcoming tasks
+  const upcomingTasks = useMemo(() => {
+    return tasks
+      .filter((task) => task.dueDate && new Date(task.dueDate) > new Date())
+      .sort(
+        (a, b) =>
+          new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime()
+      )
+      .slice(0, 5);
+  }, [tasks]);
 
-  const getTextClass = (count: number) => {
-    const ratio = count / Math.max(1, maxCount);
-    return ratio > 0.5 ? "text-white" : "text-gray-700";
-  };
-
+  // Helper functions (same as before)
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "high":
@@ -186,7 +184,6 @@ export default function HomePage({ projectName }: HomePageProps) {
         return "low";
       case "medium":
       case "normal":
-        return "medium";
       default:
         return "medium";
     }
@@ -200,98 +197,115 @@ export default function HomePage({ projectName }: HomePageProps) {
     });
   };
 
-  const upcomingTasks = tasks
-    .filter((task) => task.dueDate && new Date(task.dueDate) > new Date())
-    .sort(
-      (a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime()
-    )
-    .slice(0, 5);
+  const getCellClass = (count: number) => {
+    if (!count || count <= 0) return "bg-gray-100";
+    const ratio = count / Math.max(1, maxCount);
+    if (ratio <= 0.25) return "bg-blue-100";
+    if (ratio <= 0.5) return "bg-blue-200";
+    if (ratio <= 0.75) return "bg-blue-400";
+    return "bg-blue-600";
+  };
 
-  const recentProjectsToShow = (
-    showAllProjects ? recentProjects : recentProjects.slice(0, 5)
-  ).sort((a, b) => (b.viewedAt || 0) - (a.viewedAt || 0));
+  const getTextClass = (count: number) => {
+    const ratio = count / Math.max(1, maxCount);
+    return ratio > 0.5 ? "text-white" : "text-gray-700";
+  };
+
+  // Calendar helpers
+  const startOfMonth = new Date(
+    monthDate.getFullYear(),
+    monthDate.getMonth(),
+    1
+  );
+  const endOfMonth = new Date(
+    monthDate.getFullYear(),
+    monthDate.getMonth() + 1,
+    0
+  );
+  const startDay = startOfMonth.getDay();
+  const daysInMonth = endOfMonth.getDate();
+  const projectsToShow = showAllProjects ? projects : projects.slice(0, 5);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading {projectName}...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 md:px-8">
-      {/* Quick actions: Create or Join project */}
-      <div className="flex justify-end gap-3 py-3">
-        <Button
-          onClick={openCreateProject}
-          className="bg-blue-500 hover:bg-blue-600 text-white"
-          size="sm"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          New Project
-        </Button>
-        <Button variant="outline" size="sm" onClick={openJoinTeam}>
-          Join Existing
-        </Button>
+      {/* Header - Conditional based on project state */}
+      <div className="flex items-center justify-end py-4 mb-6 gap-4">
+        <CreateProjectModal onProjectCreated={handleProjectCreated} />
+        <JoinTeamModal onProjectJoined={handleProjectJoined} />
       </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-[repeat(2,1fr)] gap-6 p-4 h-screen">
-        {/* Recent Projects Section */}
+        {/* Switch Project Section */}
         <Card className="border-2 border-slate-300 flex flex-col">
           <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-xl font-semibold text-slate-700">
-                Recent Projects
-              </CardTitle>
-            </div>
+            <CardTitle className="text-xl font-semibold text-slate-700">
+              Switch Project
+            </CardTitle>
           </CardHeader>
-
           <CardContent className="flex-1 space-y-4 overflow-y-auto">
-            {recentProjects.length > 0 ? (
+            {projects.length > 0 ? (
               <div className="space-y-3">
-                {recentProjectsToShow.map((proj) => (
+                {projectsToShow.map((project) => (
                   <div
-                    key={`${proj.teamId}-${proj.viewedAt}`}
-                    className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                    onClick={() => setProject(proj.name, proj.teamId)}
-                    title={`Last viewed: ${new Date(
-                      proj.viewedAt
-                    ).toLocaleString()}`}
+                    key={project.id}
+                    className={`p-3 border rounded-lg hover:bg-gray-50 cursor-pointer ${
+                      project.teamId === currentProjectFromUrl
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-200"
+                    }`}
+                    onClick={() =>
+                      handleProjectSwitch(project.name, project.teamId)
+                    }
                   >
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium text-slate-800 truncate">
-                        {proj.name}
-                      </h4>
-                      <div className="text-[11px] text-gray-500 ml-2 whitespace-nowrap">
-                        {new Date(proj.viewedAt).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </div>
-                    </div>
+                    <h4 className="font-medium text-slate-800 truncate">
+                      {project.name}
+                    </h4>
                     <div className="text-xs text-slate-500 mt-1">
-                      Team: {proj.teamId}
+                      Team: {project.teamId}
                     </div>
+                    {project.description && (
+                      <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                        {project.description}
+                      </p>
+                    )}
                   </div>
                 ))}
-
-                {recentProjects.length > 5 && (
-                  <div className="pt-1">
-                    <Button
-                      variant="ghost"
-                      className="w-full text-blue-600 hover:underline"
-                      onClick={() => setShowAllProjects((v) => !v)}
-                    >
-                      {showAllProjects ? "See less" : "See more"}
-                    </Button>
-                  </div>
+                {projects.length > 5 && (
+                  <Button
+                    variant="ghost"
+                    className="w-full text-blue-600 hover:underline"
+                    onClick={() => setShowAllProjects((v) => !v)}
+                  >
+                    {showAllProjects
+                      ? "See less"
+                      : `See ${projects.length - 5} more`}
+                  </Button>
                 )}
               </div>
             ) : (
               <div className="text-center text-slate-400 py-8">
-                <p>No recent projects yet</p>
+                <p>No projects available</p>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Upcoming Work Section */}
+        {/* Upcoming Work */}
         <Card className="border-2 border-slate-300 lg:row-span-2 flex flex-col">
           <CardHeader>
             <CardTitle className="text-xl font-semibold text-slate-700">
-              Upcoming Work
+              Upcoming Work ({upcomingTasks.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 overflow-y-auto">
@@ -335,37 +349,27 @@ export default function HomePage({ projectName }: HomePageProps) {
           </CardContent>
         </Card>
 
-        {/* Calendar Section */}
+        {/* Calendar */}
         <Card className="border-2 border-slate-300 flex flex-col">
           <CardHeader>
             <CardTitle className="text-xl font-semibold text-slate-700">
-              Calendar
+              Calendar -{" "}
+              {monthDate.toLocaleDateString("en-US", {
+                month: "long",
+                year: "numeric",
+              })}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-sm font-medium text-slate-700">
-                {monthDate.toLocaleDateString("en-US", {
-                  month: "long",
-                  year: "numeric",
-                })}
-              </div>
-            </div>
-
-            {/* Weekday headers */}
             <div className="grid grid-cols-7 gap-1 text-[10px] text-center text-slate-500 mb-1">
               {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
                 <div key={d}>{d}</div>
               ))}
             </div>
-
-            {/* Month grid */}
             <div className="grid grid-cols-7 gap-1">
-              {/* Leading blanks */}
               {Array.from({ length: startDay }).map((_, idx) => (
                 <div key={`blank-${idx}`} className="h-7 w-7" />
               ))}
-              {/* Days */}
               {Array.from({ length: daysInMonth }).map((_, i) => {
                 const day = i + 1;
                 const date = new Date(
@@ -375,13 +379,13 @@ export default function HomePage({ projectName }: HomePageProps) {
                 );
                 const key = date.toISOString().slice(0, 10);
                 const count = countsByDate.get(key) || 0;
-                const bg = getCellClass(count);
-                const text = getTextClass(count);
                 return (
                   <div
                     key={key}
                     title={`${count} task${count === 1 ? "" : "s"}`}
-                    className={`h-7 w-7 rounded flex items-center justify-center text-[10px] ${bg} ${text}`}
+                    className={`h-7 w-7 rounded flex items-center justify-center text-[10px] ${getCellClass(
+                      count
+                    )} ${getTextClass(count)}`}
                   >
                     {day}
                   </div>
@@ -392,7 +396,8 @@ export default function HomePage({ projectName }: HomePageProps) {
         </Card>
       </div>
 
-      {activeModal === "createProject" && (
+      {/* Modals */}
+      {/* {activeModal === "createProject" && (
         <CreateProjectModal
           isOpen={true}
           onClose={closeModal}
@@ -405,7 +410,7 @@ export default function HomePage({ projectName }: HomePageProps) {
           onClose={closeModal}
           onProjectJoined={handleProjectJoined}
         />
-      )}
+      )} */}
     </div>
   );
 }

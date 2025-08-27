@@ -3,78 +3,99 @@
 import React, { useState } from "react";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getProjectByTeamId } from "@/actions/project-action";
+import { Label } from "@radix-ui/react-label";
+import { toast } from "sonner";
 
 interface JoinTeamModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onProjectJoined: (payload: { projectName: string; teamId: string }) => void;
+  onProjectJoined?: (name: string, teamId: string) => void;
 }
 
-export function JoinTeamModal({
-  isOpen,
-  onClose,
-  onProjectJoined,
-}: JoinTeamModalProps) {
+export function JoinTeamModal({ onProjectJoined }: JoinTeamModalProps) {
   const [teamId, setTeamId] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async () => {
     const id = teamId.trim();
-    if (id) {
-      try {
-        const proj = await getProjectByTeamId(id);
-        if (proj) {
-          onProjectJoined({ projectName: proj.name, teamId: id });
-          setTeamId("");
-        }
-      } catch {}
+    if (!id) return;
+
+    setIsLoading(true);
+    try {
+      // Only query database - no localStorage
+      const proj = await getProjectByTeamId(id);
+      if (proj) {
+        // Call the callback to update parent state
+        onProjectJoined?.(proj.name, id);
+
+        // Reset form and close modal
+        setTeamId("");
+        setIsOpen(false);
+        toast.success(`Successfully joined project: ${proj.name}`);
+      } else {
+        toast.error("Project not found. Please check the Project ID.");
+      }
+    } catch (error) {
+      console.error("Failed to join project:", error);
+      toast.error("Failed to join project. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleClose = () => {
-    setTeamId(""); // Reset form on close
-    onClose();
-  };
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-sm">
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline">Join Team</Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-lg font-semibold">
-            Project ID
-          </DialogTitle>
+          <DialogTitle>Join Existing Team</DialogTitle>
+          <DialogDescription>
+            Enter the Project ID to join an existing team.
+          </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          <div>
+        <div className="flex items-center gap-2">
+          <div className="grid flex-1 gap-2">
+            <Label htmlFor="team-id" className="sr-only">
+              Project ID
+            </Label>
             <Input
-              placeholder="Enter your Project ID"
-              className="w-full"
+              id="team-id"
+              placeholder="Enter Project ID (e.g., PRJ-ABC12345)"
               value={teamId}
               onChange={(e) => setTeamId(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+              onKeyDown={(e) =>
+                e.key === "Enter" && !isLoading && handleSubmit()
+              }
+              disabled={isLoading}
             />
           </div>
-
-          <p className="text-sm text-gray-600">
-            Ask your project admin for the Project ID if you don&apos;t have it.
-          </p>
         </div>
-
-        <div className="flex justify-center pt-4">
+        <DialogFooter className="sm:justify-start">
+          <DialogClose asChild>
+            <Button variant="outline" disabled={isLoading}>
+              Cancel
+            </Button>
+          </DialogClose>
           <Button
-            className="bg-blue-500 hover:bg-blue-600 text-white w-full"
+            className="bg-green-500 hover:bg-green-600 text-white"
             onClick={handleSubmit}
-            disabled={!teamId.trim()}
+            disabled={!teamId.trim() || isLoading}
           >
-            Join Project
+            {isLoading ? "Joining..." : "Join Team"}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

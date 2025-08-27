@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { getProjectByTeamId, getProjectsByTeamIds } from "@/actions/project-action";
+// import { getProjectByTeamId, getProjectsByTeamIds } from "@/actions/project-action";
 
 type RecentProject = {
 	name: string;
@@ -47,7 +47,9 @@ export function usePersistentProjectState() {
 				);
 				setRecentProjects(sorted);
 
-				// Validate against DB and prune/update names
+				// TODO: Validate against DB and prune/update names when server actions are available
+				// Comment out DB validation to avoid SSR conflicts
+				/*
 				(async () => {
 					try {
 						const teamIds = Array.from(
@@ -86,6 +88,7 @@ export function usePersistentProjectState() {
 						} catch {}
 					} catch {}
 				})();
+				*/
 			}
 		} catch {}
 	}, []);
@@ -159,7 +162,9 @@ export function usePersistentProjectState() {
 	// Re-validate on window focus to reflect external DB changes
 	useEffect(() => {
 		const onFocus = () => {
-			// Always prune/update recent projects based on DB state
+			// TODO: Re-enable DB validation when server actions are properly set up
+			// Comment out DB validation to avoid SSR conflicts
+			/*
 			try {
 				const ids = Array.from(
 					new Set(recentProjects.map((p) => p.teamId).filter(Boolean))
@@ -215,6 +220,7 @@ export function usePersistentProjectState() {
 					}
 				})
 				.catch(() => {});
+			*/
 		};
 
 		if (typeof window !== "undefined") {

@@ -3,91 +3,108 @@
 import React, { useState } from "react";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createProject } from "@/actions/project-action";
 import { nanoid } from "nanoid";
-import {
-  defaultColumns,
-  getColumnsStorageKey,
-} from "@/lib/hooks/useColumnManagement";
-import { useAuth } from "@/components/providers/auth-provider";
+import { Label } from "@radix-ui/react-label";
+import { useAuth } from "../providers/auth-provider";
+import { toast } from "sonner";
 
 interface CreateProjectModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onProjectCreated: (payload: { projectName: string; teamId: string }) => void;
+  onProjectCreated?: (name: string, teamId: string) => void;
 }
 
 export function CreateProjectModal({
-  isOpen,
-  onClose,
   onProjectCreated,
 }: CreateProjectModalProps) {
   const [projectName, setProjectName] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
   const generateProjectId = () => "PRJ-" + nanoid(8).toUpperCase();
 
   const handleSubmit = async () => {
     const name = projectName.trim();
-    if (name) {
-      const effectiveTeamId = generateProjectId();
-      try {
-        await createProject({
-          name,
-          teamId: effectiveTeamId,
-          ownerUserId: user?.id,
-        });
-      } catch {}
-      try {
-        localStorage.setItem(
-          getColumnsStorageKey(effectiveTeamId),
-          JSON.stringify(defaultColumns)
-        );
-      } catch {}
-      onProjectCreated({ projectName: name, teamId: effectiveTeamId });
+    if (!name) return;
+
+    setIsLoading(true);
+    const effectiveTeamId = generateProjectId();
+
+    try {
+      // Only create in database - no localStorage
+      await createProject({
+        name,
+        teamId: effectiveTeamId,
+        ownerUserId: user?.id,
+      });
+
+      // Call the callback to update parent state
+      onProjectCreated?.(name, effectiveTeamId);
+
+      // Reset form and close modal
       setProjectName("");
+      setIsOpen(false);
+      toast.success("Project created successfully!");
+    } catch (error) {
+      console.error("Failed to create project:", error);
+      toast.error("Failed to create project. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleClose = () => {
-    setProjectName("");
-    onClose();
-  };
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-sm">
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button>Create Project</Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-lg font-semibold">
-            Create a New Project
-          </DialogTitle>
+          <DialogTitle>Create a New Project</DialogTitle>
+          <DialogDescription>
+            Create a new project to get started.
+          </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          <div>
+        <div className="flex items-center gap-2">
+          <div className="grid flex-1 gap-2">
+            <Label htmlFor="project-name" className="sr-only">
+              Project Name
+            </Label>
             <Input
+              id="project-name"
               placeholder="Enter project name"
-              className="w-full"
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+              onKeyDown={(e) =>
+                e.key === "Enter" && !isLoading && handleSubmit()
+              }
+              disabled={isLoading}
             />
           </div>
         </div>
-
-        <div className="flex justify-center pt-4">
+        <DialogFooter className="sm:justify-start">
+          <DialogClose asChild>
+            <Button variant="outline" disabled={isLoading}>
+              Cancel
+            </Button>
+          </DialogClose>
           <Button
-            className="bg-blue-500 hover:bg-blue-600 text-white w-full"
+            className="bg-blue-500 hover:bg-blue-600 text-white"
             onClick={handleSubmit}
-            disabled={!projectName.trim()}
+            disabled={!projectName.trim() || isLoading}
           >
-            Create Project
+            {isLoading ? "Creating..." : "Create Project"}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

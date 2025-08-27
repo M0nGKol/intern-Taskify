@@ -16,6 +16,8 @@ import {
 import { eq, and, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { sendProjectInviteEmail } from "@/lib/resend";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is not set");
@@ -42,10 +44,33 @@ async function resolveProjectId(projectKey: string): Promise<string | null> {
 
 export async function getAllProjects(): Promise<Project[]> {
   try {
-    const projects = await db.select().from(project);
-    return projects as Project[];
+    // Get the current user session
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session || !session.user) {
+      throw new Error("User not authenticated");
+    }
+
+    const userId = session.user.id;
+
+    // Get projects where the user is a member
+    const userProjects = await db
+      .select({
+        id: project.id,
+        name: project.name,
+        teamId: project.teamId,
+        createdAt: project.createdAt,
+        updatedAt: project.updatedAt,
+      })
+      .from(project)
+      .innerJoin(projectMember, eq(project.id, projectMember.projectId))
+      .where(eq(projectMember.userId, userId));
+
+    return userProjects as Project[];
   } catch (error) {
-    console.error("Error fetching all projects:", error);
+    console.error("Error fetching user projects:", error);
     throw new Error("Failed to fetch projects");
   }
 }

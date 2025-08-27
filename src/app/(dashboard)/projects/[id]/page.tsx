@@ -11,18 +11,18 @@ export default async function ProjectsPage({
   const { id } = await params;
   const tasks = await getTasksByTeam(id);
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "high":
-        return "bg-red-500 text-white";
-      case "medium":
-        return "bg-yellow-500 text-white";
-      case "low":
-        return "bg-green-500 text-white";
-      default:
-        return "bg-gray-500 text-white";
-    }
-  };
+  // const getPriorityColor = (priority: string) => {
+  //   switch (priority) {
+  //     case "high":
+  //       return "bg-red-500 text-white";
+  //     case "medium":
+  //       return "bg-yellow-500 text-white";
+  //     case "low":
+  //       return "bg-green-500 text-white";
+  //     default:
+  //       return "bg-gray-500 text-white";
+  //   }
+  // };
 
   const formatDate = (date: Date | null | undefined) => {
     if (!date) return "No due date";

@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import type { Task } from "@/constants/data";
-// import { getProjectsByTeam } from "@/actions/project-action";
-import { usePersistentProjectState } from "@/lib/hooks/usePersistentProjectState";
+// // import { getProjectsByTeam } from "@/actions/project-action";
+// import { usePersistentProjectState } from "@/lib/hooks/usePersistentProjectState";
 
 export type ViewType = "day" | "week" | "month" | "year";
 export type PriorityFilter = "all" | "high" | "medium" | "low";
@@ -19,28 +19,7 @@ export function useCalendar(tasks: Task[]) {
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("all");
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const { teamId, projectName } = usePersistentProjectState();
-  const [dbProjects, setDbProjects] = useState<string[]>([]);
-
-  // useEffect(() => {
-  //   const load = async () => {
-  //     if (!teamId) return;
-  //     try {
-  //       const list = await getProjectsByTeam(teamId);
-  //       setDbProjects(list.map((p) => p.name));
-  //     } catch {}
-  //   };
-  //   load();
-  // }, [teamId]);
-
-  // Keep calendar project filter in sync with selected project
-  // useEffect(() => {
-  //   if (projectName && projectName.length > 0) {
-  //     setProjectFilter(projectName);
-  //   } else {
-  //     setProjectFilter("all");
-  //   }
-  // }, [projectName]);
+  const [dbProjects] = useState<string[]>([]);
 
   // Get unique projects for filtering
   const projects = useMemo(() => {

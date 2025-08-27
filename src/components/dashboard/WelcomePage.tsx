@@ -1,52 +1,55 @@
+"use client";
 import React from "react";
 
 export default function WelcomePage() {
   return (
-    <div>
+    <div className="px-4 md:px-8">
       <main className="flex-1 px-8 py-8">
         <div className="max-w-4xl mx-auto">
-          <div className="space-y-8 text-start">
+          <div className="space-y-8 text-center">
             {/* Welcome Section */}
             <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">
                 ✨ Welcome to Your Dashboard!
               </h2>
-              <p className="text-primary mb-6">
-                {
-                  "We're excited to have you on board! Here's what you can do to get started:"
-                }
+              <p className="text-lg text-gray-600 mb-8">
+                Were excited to have you on board! Get started by creating a new
+                project or joining an existing team.
               </p>
             </div>
 
-            {/* Action Cards */}
-            <div className="space-y-6">
-              <div>
+            {/* Info Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+              <div className="text-center p-6 bg-white rounded-lg shadow-sm border">
+                <div className="text-4xl mb-3">🚀</div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  🚀 Create Your First Project
+                  Create Projects
                 </h3>
-                <p className="text-primary">
-                  Start organizing your work by clicking `New Project` above.
+                <p className="text-gray-600 text-sm">
+                  Start organizing your work by creating your first project and
+                  adding tasks.
                 </p>
               </div>
 
-              <div>
+              <div className="text-center p-6 bg-white rounded-lg shadow-sm border">
+                <div className="text-4xl mb-3">👥</div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  👥 Join an Existing Project
+                  Collaborate
                 </h3>
-                <p className="text-primary">
-                  Already part of a team? Use `Join Existing` to connect with
-                  them.
+                <p className="text-gray-600 text-sm">
+                  Join existing teams and work together on shared projects and
+                  goals.
                 </p>
               </div>
 
-              <div>
+              <div className="text-center p-6 bg-white rounded-lg shadow-sm border">
+                <div className="text-4xl mb-3">✅</div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  ✅ Tasks and Notes Will Appear Here
+                  Track Progress
                 </h3>
-                <p className="text-primary">
-                  {
-                    "Once you create or join a project, you'll start seeing your tasks and notes here."
-                  }
+                <p className="text-gray-600 text-sm">
+                  Monitor your tasks, deadlines, and team progress all in one
+                  place.
                 </p>
               </div>
             </div>
