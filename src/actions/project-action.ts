@@ -18,6 +18,7 @@ import { nanoid } from "nanoid";
 import { sendProjectInviteEmail } from "@/lib/resend";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { sendInviteEmail } from "@/lib/email";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is not set");
@@ -173,10 +174,11 @@ export async function deleteProjectById(projectId: string): Promise<boolean> {
 }
 
 export async function inviteToProject(params: {
-  projectId: string; // can be teamId or real project.id
+  projectId: string;
   email: string;
-  role: "admin" | "editor" | "viewer";
+  role:  "editor" | "viewer";
   invitedByUserId?: string;
+  token: string;
 }): Promise<ProjectInvite> {
   if (!params.invitedByUserId) {
     throw new Error("Not authorized");
@@ -201,7 +203,7 @@ export async function inviteToProject(params: {
     throw new Error("Only the project owner can invite members");
   }
 
-  const token = nanoid(24);
+  // const token = nanoid(24);
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7); // 7 days
 
   const inserted = await db
@@ -211,7 +213,7 @@ export async function inviteToProject(params: {
       projectId: resolvedId,
       email: params.email.toLowerCase(),
       role: params.role,
-      token,
+      token: params.token,
       invitedByUserId: params.invitedByUserId,
       expiresAt,
     })
@@ -224,16 +226,17 @@ export async function inviteToProject(params: {
       .select()
       .from(project)
       .where(eq(project.id, resolvedId));
-    const baseUrl =
-      process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    const acceptUrl = `${baseUrl}/invite/${token}`;
+    // const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    // const acceptUrl = `${baseUrl}/invite/${params.token}`;
 
-    await sendProjectInviteEmail({
-      to: params.email.toLowerCase(),
-      projectName: (proj as Project)?.name,
-      role: params.role,
-      acceptUrl,
-    });
+    // await sendProjectInviteEmail({
+    //   to: params.email.toLowerCase(),
+    //   projectName: (proj as Project)?.name,
+    //   role: params.role,
+    //   acceptUrl,
+    // });
+
+    // await sendInviteEmail(params.email, (proj as Project)?.name, params.role, acceptUrl);
   } catch (err) {
     console.error("Failed to send invite email:", err);
   }
@@ -339,4 +342,75 @@ export async function acceptProjectInvite(params: {
 
   await db.delete(projectInvite).where(eq(projectInvite.id, invite.id));
   return member;
+}
+
+export async function joinProjectByTeamId(params: {
+  teamId: string;
+  userId: string;
+  requestedRole?: "viewer" | "editor"; // Users can only request viewer or editor roles
+}): Promise<{ project: Project; member: ProjectMember; isNewMember: boolean } | null> {
+  try {
+    console.log("joinProjectByTeamId called with params:", params);
+    
+    // First, find the project by team ID
+    const project = await getProjectByTeamId(params.teamId);
+    console.log("Found project:", project);
+    
+    if (!project) {
+      throw new Error("Project not found with the provided Team ID");
+    }
+
+    // Check if user is already a member
+    const existingMember = await db
+      .select()
+      .from(projectMember)
+      .where(
+        and(
+          eq(projectMember.projectId, project.id),
+          eq(projectMember.userId, params.userId)
+        )
+      );
+
+    console.log("Existing member check:", existingMember);
+
+    if (existingMember.length > 0) {
+      // User is already a member, return existing membership
+      console.log("User is already a member");
+      return {
+        project,
+        member: existingMember[0] as ProjectMember,
+        isNewMember: false,
+      };
+    }
+
+    // Determine the role to assign
+    // Default to "viewer" for security, allow "editor" if explicitly requested
+    const roleToAssign: ProjectMember["role"] = 
+      params.requestedRole === "editor" ? "editor" : "viewer";
+
+    console.log("Adding user as new member with role:", roleToAssign);
+
+    // Add user as a project member
+    const inserted = await db
+      .insert(projectMember)
+      .values({
+        id: nanoid(),
+        projectId: project.id,
+        userId: params.userId,
+        role: roleToAssign,
+      })
+      .returning();
+
+    const member = inserted[0] as ProjectMember;
+    console.log("New member created:", member);
+
+    return {
+      project,
+      member,
+      isNewMember: true,
+    };
+  } catch (error) {
+    console.error("Error joining project by team ID:", error);
+    throw error; // Re-throw to let caller handle specific errors
+  }
 }

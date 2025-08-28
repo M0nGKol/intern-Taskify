@@ -17,89 +17,158 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useEffect, useState } from "react";
+import { usePathname, useParams } from "next/navigation";
 import {
-  inviteToProject,
   listProjectInvites,
-  getMyRoleForProject,
+  inviteToProject,
+  getProjectsByTeamIds,
 } from "@/actions/project-action";
 import { usePersistentProjectState } from "@/lib/hooks/usePersistentProjectState";
 import { toast } from "sonner";
 import { useAuth } from "@/components/providers/auth-provider";
+import { nanoid } from "nanoid";
 
 interface InviteTeamModalProps {
   isOpen: boolean;
   onClose: () => void;
+  projectId?: string; // Add optional projectId prop
 }
 
-export function InviteTeamModal({ isOpen, onClose }: InviteTeamModalProps) {
-  const { teamId, projectName } = usePersistentProjectState();
+export function InviteTeamModal({
+  isOpen,
+  onClose,
+  projectId,
+}: InviteTeamModalProps) {
+  const { projectName } = usePersistentProjectState();
+  const [resolvedProjectName, setResolvedProjectName] = useState(
+    projectName || ""
+  );
+  const pathname = usePathname();
+  const params = useParams();
+  const routeTeamId = (params?.id as string) || null;
   const { user } = useAuth();
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"admin" | "editor" | "viewer">("viewer");
+  const [role, setRole] = useState<"editor" | "viewer">("viewer");
   const [pending, setPending] = useState(false);
   const [invites, setInvites] = useState<{ email: string; role: string }[]>([]);
-  const [myRole, setMyRole] = useState<string | null>(null);
+
+  // Prefer prop, then route param
+  const getTeamIdFromUrl = () => {
+    if (projectId) return projectId;
+    if (routeTeamId) return routeTeamId;
+    return null;
+  };
+  const currentTeamId = getTeamIdFromUrl();
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !currentTeamId) return;
 
     const loadInvites = async () => {
       try {
-        const list = await listProjectInvites(teamId);
+        const list = await listProjectInvites(currentTeamId);
         setInvites(list.map((i) => ({ email: i.email, role: i.role })));
       } catch {}
     };
 
-    const loadRole = async () => {
+    const loadProjectName = async () => {
       try {
-        if (user?.id && teamId) {
-          const r = await getMyRoleForProject({
-            projectKey: teamId,
-            userId: user.id,
-          });
-          setMyRole(r);
-        } else {
-          setMyRole(null);
-        }
-      } catch {
-        setMyRole(null);
-      }
+        const projects = await getProjectsByTeamIds([currentTeamId]);
+        if (projects?.[0]?.name) setResolvedProjectName(projects[0].name);
+      } catch {}
     };
 
     loadInvites();
-    loadRole();
-  }, [isOpen, teamId, user?.id]);
+    loadProjectName();
+  }, [isOpen, currentTeamId, user?.id]);
 
   const handleInvite = async () => {
-    if (!teamId) return;
-    if (myRole !== "owner") {
-      toast.error("Only owners can invite members");
+    console.log("🔍 Debug values:", {
+      currentTeamId,
+      userId: user?.id,
+      user,
+      projectName,
+      pathname,
+      hasProject: currentTeamId && user?.id,
+    });
+
+    if (!currentTeamId || !user?.id) {
+      toast.error(
+        `Missing project or user information. TeamId: ${
+          currentTeamId ? "OK" : "MISSING"
+        }, UserId: ${user?.id ? "OK" : "MISSING"}`
+      );
       return;
     }
+
+    // Temporarily comment out the role check to test
+    // if (myRole !== "owner") {
+    //   toast.error("Only owners can invite members");
+    //   return;
+    // }
+
     const trimmed = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       toast.error("Enter a valid email address");
       return;
     }
+    console.log("1");
     setPending(true);
     try {
+      const token = nanoid(64);
+
       await inviteToProject({
-        projectId: teamId,
+        projectId: currentTeamId,
         email: trimmed,
         role,
         invitedByUserId: user?.id,
+        token,
       });
+      const baseUrl =
+        process.env.NEXT_PUBLIC_BASE_URL ||
+        (typeof window !== "undefined"
+          ? window.location.origin
+          : "http://localhost:3000");
+      const acceptUrl = `${baseUrl}/invite/${encodeURIComponent(token)}`;
+
+      console.log("Sending invitation with:", {
+        email: trimmed,
+        projectName: resolvedProjectName || projectName || "Unknown Project",
+        role,
+        acceptUrl,
+      });
+
+      const finalProjectName =
+        resolvedProjectName || projectName || "Unknown Project";
+
+      const response = await fetch("/api/mail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: trimmed,
+          projectName: finalProjectName,
+          role,
+          acceptUrl,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to send invitation");
+      }
+
+      const result = await response.json();
+      console.log("Email sent successfully:", result);
+
       toast.success("Invitation sent");
       setEmail("");
-
-      // Reload invites after successful invitation
+      console.log("done");
       try {
-        const list = await listProjectInvites(teamId);
+        const list = await listProjectInvites(currentTeamId);
         setInvites(list.map((i) => ({ email: i.email, role: i.role })));
       } catch {}
     } catch (e) {
       if (e instanceof Error) toast.error(e.message);
-      else toast.error("Failed to send invite");
+      else toast.error("Failed to send invitation");
     } finally {
       setPending(false);
     }
@@ -114,16 +183,8 @@ export function InviteTeamModal({ isOpen, onClose }: InviteTeamModalProps) {
           </DialogTitle>
         </DialogHeader>
 
-        <div className="py-2 text-xs text-gray-500">
-          Your role: {myRole ?? "—"}
-          {myRole !== "owner" ? " — only owners can invite" : ""}
-        </div>
-
         {/* Role descriptions */}
         <div className="py-2 space-y-2 text-xs text-gray-600 bg-gray-50 p-3 rounded">
-          <div>
-            <strong>Admin:</strong> Full task management, cannot invite members
-          </div>
           <div>
             <strong>Editor:</strong> Create, edit, delete tasks only
           </div>
@@ -144,13 +205,12 @@ export function InviteTeamModal({ isOpen, onClose }: InviteTeamModalProps) {
           <div className="flex items-center gap-2">
             <Select
               value={role}
-              onValueChange={(v) => setRole(v as "admin" | "editor" | "viewer")}
+              onValueChange={(v) => setRole(v as "editor" | "viewer")}
             >
               <SelectTrigger className="flex-1">
                 <SelectValue placeholder="Role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="editor">Editor</SelectItem>
                 <SelectItem value="viewer">Viewer</SelectItem>
               </SelectContent>
@@ -158,7 +218,7 @@ export function InviteTeamModal({ isOpen, onClose }: InviteTeamModalProps) {
             <Button
               className="bg-blue-500 hover:bg-blue-600 text-white"
               onClick={handleInvite}
-              disabled={pending || myRole !== "owner"}
+              disabled={pending}
             >
               {pending ? "Sending..." : "Invite"}
             </Button>

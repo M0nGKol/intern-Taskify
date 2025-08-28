@@ -38,6 +38,7 @@ import { useDragAndDrop } from "@/lib/hooks/useDragAndDrop";
 import { CreateTaskModal } from "@/components/modals/create-task-modal";
 import { CreateColumnModal } from "@/components/modals/create-column-modal";
 import { EditTaskModal } from "@/components/modals/edit-task-modal";
+import { InviteTeamModal } from "./modals/invite-team";
 
 // Extended Task type with priority
 type TaskWithPriority = Task & {
@@ -271,7 +272,7 @@ export function TaskPageClient({
   // Create column handler
   const handleCreateColumn = (columnData: { title: string; color: string }) => {
     const newColumn: Column = {
-      id: `col-${Date.now()}`, // Simple ID generation
+      id: `col-${Date.now()}`,
       title: columnData.title,
       color: columnData.color,
       order: columns.length,
@@ -387,43 +388,7 @@ export function TaskPageClient({
             >
               Invite
             </Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="text-sm">
-                  Switch Project
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-72">
-                <div className="space-y-2">
-                  <Input
-                    placeholder="Search projects..."
-                    value={projectQuery}
-                    onChange={(e) => setProjectQuery(e.target.value)}
-                  />
-                  <div className="max-h-64 overflow-y-auto space-y-1">
-                    {filteredProjects.length === 0 ? (
-                      <div className="text-sm text-gray-500 px-1 py-2">
-                        No projects
-                      </div>
-                    ) : (
-                      filteredProjects.map((p) => (
-                        <button
-                          key={p.id}
-                          className={`w-full text-left px-2 py-2 rounded hover:bg-gray-100 text-sm ${
-                            p.teamId === teamId
-                              ? "bg-blue-50 text-blue-700 font-medium"
-                              : ""
-                          }`}
-                          onClick={() => switchProject(p.name, p.teamId)}
-                        >
-                          {p.name}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
+
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" title="Manage projects">
@@ -666,17 +631,10 @@ export function TaskPageClient({
       </Dialog>
 
       {/* Minimal Invite Dialog */}
-      <Dialog open={isInviteOpen} onOpenChange={() => setIsInviteOpen(false)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Invite Team</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Input placeholder="Email address" />
-            <Button onClick={() => setIsInviteOpen(false)}>Invite</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <InviteTeamModal
+        isOpen={isInviteOpen}
+        onClose={() => setIsInviteOpen(false)}
+      />
 
       {/* Modal Components */}
       <CreateTaskModal

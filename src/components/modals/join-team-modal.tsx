@@ -13,9 +13,17 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getProjectByTeamId } from "@/actions/project-action";
 import { Label } from "@radix-ui/react-label";
 import { toast } from "sonner";
+import { useAuth } from "@/components/providers/auth-provider";
+import { joinProjectByTeamId } from "@/actions/project-action";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface JoinTeamModalProps {
   onProjectJoined?: (name: string, teamId: string) => void;
@@ -23,38 +31,97 @@ interface JoinTeamModalProps {
 
 export function JoinTeamModal({ onProjectJoined }: JoinTeamModalProps) {
   const [teamId, setTeamId] = useState("");
+  const [requestedRole, setRequestedRole] = useState<"viewer" | "editor">(
+    "viewer"
+  );
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { user } = useAuth();
 
   const handleSubmit = async () => {
     const id = teamId.trim();
-    if (!id) return;
+    if (!id) {
+      toast.error("Please enter a Team ID");
+      return;
+    }
+
+    if (!user?.id) {
+      toast.error("You must be logged in to join a team");
+      return;
+    }
 
     setIsLoading(true);
+
+    // Add debugging logs
+    console.log("Attempting to join project:", {
+      teamId: id,
+      userId: user.id,
+      requestedRole,
+    });
+
     try {
-      // Only query database - no localStorage
-      const proj = await getProjectByTeamId(id);
-      if (proj) {
+      const result = await joinProjectByTeamId({
+        teamId: id,
+        userId: user.id,
+        requestedRole,
+      });
+
+      console.log("Join result:", result);
+
+      if (result) {
         // Call the callback to update parent state
-        onProjectJoined?.(proj.name, id);
+        onProjectJoined?.(result.project.name, id);
 
         // Reset form and close modal
         setTeamId("");
+        setRequestedRole("viewer");
         setIsOpen(false);
-        toast.success(`Successfully joined project: ${proj.name}`);
+
+        if (result.isNewMember) {
+          toast.success(
+            `Successfully joined "${result.project.name}" as ${result.member.role}`
+          );
+        } else {
+          toast.success(
+            `Welcome back to "${result.project.name}" (Role: ${result.member.role})`
+          );
+        }
       } else {
-        toast.error("Project not found. Please check the Project ID.");
+        console.log("No result returned from joinProjectByTeamId");
+        toast.error("Failed to join project - no result returned");
       }
     } catch (error) {
       console.error("Failed to join project:", error);
-      toast.error("Failed to join project. Please try again.");
+      if (error instanceof Error) {
+        console.error("Error details:", {
+          message: error.message,
+          stack: error.stack,
+          name: error.name,
+        });
+        if (error.message.includes("not found")) {
+          toast.error("Project not found. Please check the Team ID.");
+        } else {
+          toast.error(error.message);
+        }
+      } else {
+        console.error("Unknown error type:", error);
+        toast.error("Failed to join project. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleClose = () => {
+    if (!isLoading) {
+      setTeamId("");
+      setRequestedRole("viewer");
+      setIsOpen(false);
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog onOpenChange={handleClose}>
       <DialogTrigger asChild>
         <Button variant="outline">Join Team</Button>
       </DialogTrigger>
@@ -62,17 +129,18 @@ export function JoinTeamModal({ onProjectJoined }: JoinTeamModalProps) {
         <DialogHeader>
           <DialogTitle>Join Existing Team</DialogTitle>
           <DialogDescription>
-            Enter the Project ID to join an existing team.
+            Enter the Team ID and select your desired role to join an existing
+            project.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex items-center gap-2">
-          <div className="grid flex-1 gap-2">
-            <Label htmlFor="team-id" className="sr-only">
-              Project ID
-            </Label>
+
+        <div className="space-y-4">
+          {/* Team ID Input */}
+          <div className="space-y-2">
+            <Label htmlFor="team-id">Team ID</Label>
             <Input
               id="team-id"
-              placeholder="Enter Project ID (e.g., PRJ-ABC12345)"
+              placeholder="Enter Team ID (e.g., PRJ-ABC12345)"
               value={teamId}
               onChange={(e) => setTeamId(e.target.value)}
               onKeyDown={(e) =>
@@ -81,7 +149,52 @@ export function JoinTeamModal({ onProjectJoined }: JoinTeamModalProps) {
               disabled={isLoading}
             />
           </div>
+
+          {/* Role Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="role-select">Requested Role</Label>
+            <Select
+              value={requestedRole}
+              onValueChange={(value: "viewer" | "editor") =>
+                setRequestedRole(value)
+              }
+              disabled={isLoading}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="viewer">
+                  <div className="flex flex-col items-start">
+                    <span className="font-medium">Viewer</span>
+                    <span className="text-xs text-gray-500">
+                      Can view tasks and project details
+                    </span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="editor">
+                  <div className="flex flex-col items-start">
+                    <span className="font-medium">Editor</span>
+                    <span className="text-xs text-gray-500">
+                      Can create, edit, and manage tasks
+                    </span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500">
+              Note: Project owners can change your role later if needed.
+            </p>
+          </div>
+
+          {/* Debug info - show current user */}
+          {process.env.NODE_ENV === "development" && (
+            <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+              Debug: User ID: {user?.id || "Not logged in"}
+            </div>
+          )}
         </div>
+
         <DialogFooter className="sm:justify-start">
           <DialogClose asChild>
             <Button variant="outline" disabled={isLoading}>
