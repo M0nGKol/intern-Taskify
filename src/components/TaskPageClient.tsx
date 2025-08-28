@@ -1,24 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import {
-  Settings,
-  Plus,
-  Calendar,
-  Edit,
-  Trash2,
-  ArrowLeft,
-} from "lucide-react";
+import { Plus, Calendar, Edit, Trash2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent } from "@/components/ui/popover";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +27,7 @@ import { CreateTaskModal } from "@/components/modals/create-task-modal";
 import { CreateColumnModal } from "@/components/modals/create-column-modal";
 import { EditTaskModal } from "@/components/modals/edit-task-modal";
 import { InviteTeamModal } from "./modals/invite-team";
+import { useRolePermissions } from "@/lib/hooks/useRolePermissions";
 
 // Extended Task type with priority
 type TaskWithPriority = Task & {
@@ -88,6 +77,14 @@ export function TaskPageClient({
   );
   const [selectedColumnId, setSelectedColumnId] = useState<string>("");
   const [viewTask, setViewTask] = useState<ViewTask>(null);
+  const {
+    canCreateTasks,
+    canEditTasks,
+    canDeleteTasks,
+    canChangeTaskStatus,
+    canInvite,
+    isOwner,
+  } = useRolePermissions(userId, teamId);
 
   // Project switching
   const [projectQuery, setProjectQuery] = useState("");
@@ -127,7 +124,6 @@ export function TaskPageClient({
     return description.replace(/<[^>]*>/g, "").trim() || "No description";
   };
 
-  // Update filtered projects when query changes
   useEffect(() => {
     const filtered = dbProjects.filter((project) =>
       project.name.toLowerCase().includes(projectQuery.toLowerCase())
@@ -135,7 +131,6 @@ export function TaskPageClient({
     setFilteredProjects(filtered);
   }, [projectQuery, dbProjects]);
 
-  // Update tasks when initialTasks changes (when route changes)
   useEffect(() => {
     const tasksWithPriority: TaskWithPriority[] = initialTasks.map((task) => ({
       ...task,
@@ -153,6 +148,10 @@ export function TaskPageClient({
     taskId: string,
     updates: Partial<TaskWithPriority>
   ) => {
+    if (!canEditTasks) {
+      toast.error("You do not have permission to edit tasks");
+      return false;
+    }
     try {
       const updatedTask = await updateTask(taskId, updates, userId);
       if (updatedTask) {
@@ -177,8 +176,12 @@ export function TaskPageClient({
   };
 
   const handleDeleteTask = async (taskId: string) => {
+    if (!canDeleteTasks) {
+      toast.error("You do not have permission to delete tasks");
+      return;
+    }
     try {
-      await deleteTask(taskId);
+      await deleteTask(taskId, userId);
       setTasks(tasks.filter((task) => task.id !== taskId));
       toast.success("Task deleted successfully");
     } catch {
@@ -187,6 +190,10 @@ export function TaskPageClient({
   };
 
   const deleteColumn = (columnId: string) => {
+    if (!canEditTasks) {
+      toast.error("You do not have permission to manage columns");
+      return;
+    }
     const columnToDelete = columns.find((col) => col.id === columnId);
     if (!columnToDelete) return;
 
@@ -198,6 +205,10 @@ export function TaskPageClient({
 
   // Modal handlers
   const openCreateTaskModal = (columnId: string) => {
+    if (!canCreateTasks) {
+      toast.error("You do not have permission to create tasks");
+      return;
+    }
     setSelectedColumnId(columnId);
     setIsTaskModalOpen(true);
   };
@@ -208,6 +219,10 @@ export function TaskPageClient({
   };
 
   const openEditTaskModal = (task: TaskWithPriority) => {
+    if (!canEditTasks) {
+      toast.error("You do not have permission to edit tasks");
+      return;
+    }
     setSelectedTask(task);
     setIsEditModalOpen(true);
   };
@@ -225,6 +240,10 @@ export function TaskPageClient({
     priority: "high" | "medium" | "low";
   }) => {
     if (!selectedColumnId) return;
+    if (!canCreateTasks) {
+      toast.error("You do not have permission to create tasks");
+      return;
+    }
 
     try {
       const newTask = await createKanbanTask({
@@ -335,11 +354,6 @@ export function TaskPageClient({
     setDragOverColumnId(null);
   };
 
-  // Project management - uses team ID
-  const switchProject = (projectName: string, projectTeamId: string) => {
-    window.location.href = `/projects/${projectTeamId}`;
-  };
-
   const deleteProjectByName = async (projectName: string) => {
     const project = dbProjects.find((p) => p.name === projectName);
     if (project) {
@@ -381,20 +395,17 @@ export function TaskPageClient({
                 {projectName}
               </div>
             )}
-            <Button
-              variant="secondary"
-              className="text-sm"
-              onClick={() => setIsInviteOpen(true)}
-            >
-              Invite
-            </Button>
+            {canInvite && (
+              <Button
+                variant="secondary"
+                className="text-sm"
+                onClick={() => setIsInviteOpen(true)}
+              >
+                Invite
+              </Button>
+            )}
 
             <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" title="Manage projects">
-                  <Settings className="w-5 h-5" />
-                </Button>
-              </PopoverTrigger>
               <PopoverContent align="end" className="w-[520px]">
                 <div className="px-2 py-1 text-sm font-semibold text-slate-700">
                   Collaborators
@@ -420,22 +431,26 @@ export function TaskPageClient({
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Button
-                              variant="secondary"
-                              className="bg-blue-500 hover:bg-blue-600 text-white text-xs"
-                              onClick={() => setIsInviteOpen(true)}
-                            >
-                              Invite
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              className="text-xs"
-                              onClick={async () => {
-                                await deleteProjectByName(p.name);
-                              }}
-                            >
-                              Delete
-                            </Button>
+                            {canInvite && (
+                              <Button
+                                variant="secondary"
+                                className="bg-blue-500 hover:bg-blue-600 text-white text-xs"
+                                onClick={() => setIsInviteOpen(true)}
+                              >
+                                Invite
+                              </Button>
+                            )}
+                            {isOwner && (
+                              <Button
+                                variant="destructive"
+                                className="text-xs"
+                                onClick={async () => {
+                                  await deleteProjectByName(p.name);
+                                }}
+                              >
+                                Delete
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -466,25 +481,39 @@ export function TaskPageClient({
                 } text-white px-4 py-3 rounded-t-lg flex items-center justify-between ${
                   dragOverColumnId === column.id ? "ring-2 ring-white/70" : ""
                 }`}
-                draggable
-                onDragStart={(e) => handleColumnDragStart(e, column.id)}
-                onDragOver={handleColumnDragOver}
-                onDragEnter={() => handleColumnDragEnter(column.id)}
-                onDragLeave={handleColumnDragLeave}
-                onDrop={(e) => handleColumnDrop(e, column.id)}
-                onDragEnd={handleColumnDragEnd}
+                draggable={canEditTasks}
+                onDragStart={
+                  canEditTasks
+                    ? (e) => handleColumnDragStart(e, column.id)
+                    : undefined
+                }
+                onDragOver={canEditTasks ? handleColumnDragOver : undefined}
+                onDragEnter={
+                  canEditTasks
+                    ? () => handleColumnDragEnter(column.id)
+                    : undefined
+                }
+                onDragLeave={canEditTasks ? handleColumnDragLeave : undefined}
+                onDrop={
+                  canEditTasks
+                    ? (e) => handleColumnDrop(e, column.id)
+                    : undefined
+                }
+                onDragEnd={canEditTasks ? handleColumnDragEnd : undefined}
               >
                 <div className="flex items-center space-x-2">
                   <span className="font-medium">{column.title}</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <button
-                    className="text-white hover:text-gray-200"
-                    onClick={() => deleteColumn(column.id)}
-                    title="Delete column"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {canEditTasks && (
+                    <button
+                      className="text-white hover:text-gray-200"
+                      onClick={() => deleteColumn(column.id)}
+                      title="Delete column"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -494,10 +523,18 @@ export function TaskPageClient({
                     ? "bg-blue-50 border-blue-300"
                     : ""
                 }`}
-                onDragOver={handleDragOver}
-                onDragEnter={() => handleDragEnter(column.id)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleTaskDrop(e, column.id)}
+                onDragOver={canChangeTaskStatus ? handleDragOver : undefined}
+                onDragEnter={
+                  canChangeTaskStatus
+                    ? () => handleDragEnter(column.id)
+                    : undefined
+                }
+                onDragLeave={canChangeTaskStatus ? handleDragLeave : undefined}
+                onDrop={
+                  canChangeTaskStatus
+                    ? (e) => handleTaskDrop(e, column.id)
+                    : undefined
+                }
               >
                 {getTasksByStatus(column.id).map((task) => (
                   <Card
@@ -507,9 +544,13 @@ export function TaskPageClient({
                         ? "opacity-50 rotate-2 scale-105"
                         : ""
                     }`}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, task)}
-                    onDragEnd={handleDragEnd}
+                    draggable={canChangeTaskStatus}
+                    onDragStart={
+                      canChangeTaskStatus
+                        ? (e) => handleDragStart(e, task)
+                        : undefined
+                    }
+                    onDragEnd={canChangeTaskStatus ? handleDragEnd : undefined}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between mb-2">
@@ -521,13 +562,15 @@ export function TaskPageClient({
                           {task.priority}
                         </Badge>
                         <div className="flex space-x-1">
-                          <button
-                            className="text-gray-400 hover:text-gray-600"
-                            onClick={() => openEditTaskModal(task)}
-                            title="Edit task"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
+                          {canEditTasks && (
+                            <button
+                              className="text-gray-400 hover:text-gray-600"
+                              onClick={() => openEditTaskModal(task)}
+                              title="Edit task"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                          )}
                           <button
                             className="text-gray-400 hover:text-gray-600"
                             onClick={() => setViewTask(task)}
@@ -535,13 +578,15 @@ export function TaskPageClient({
                           >
                             <Calendar className="w-4 h-4" />
                           </button>
-                          <button
-                            className="text-gray-400 hover:text-red-600"
-                            onClick={() => handleDeleteTask(task.id)}
-                            title="Delete task"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {canDeleteTasks && (
+                            <button
+                              className="text-gray-400 hover:text-red-600"
+                              onClick={() => handleDeleteTask(task.id)}
+                              title="Delete task"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </div>
                       <h4 className="font-medium text-gray-900 mb-2">
@@ -563,30 +608,34 @@ export function TaskPageClient({
                 ))}
 
                 {/* Add Task Button for each column */}
-                <button
-                  onClick={() => openCreateTaskModal(column.id)}
-                  className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:text-gray-700 hover:border-gray-400 transition-colors flex items-center justify-center space-x-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span className="text-sm">Add Task</span>
-                </button>
+                {canCreateTasks && (
+                  <button
+                    onClick={() => openCreateTaskModal(column.id)}
+                    className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:text-gray-700 hover:border-gray-400 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span className="text-sm">Add Task</span>
+                  </button>
+                )}
               </div>
             </div>
           ))}
 
           {/* Add Column Button */}
-          <div className="flex flex-col">
-            <div className="bg-gray-300 text-gray-700 px-4 py-3 rounded-t-lg flex items-center justify-center">
-              <button
-                onClick={() => setIsColumnModalOpen(true)}
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-800"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Column</span>
-              </button>
+          {canEditTasks && (
+            <div className="flex flex-col">
+              <div className="bg-gray-300 text-gray-700 px-4 py-3 rounded-t-lg flex items-center justify-center">
+                <button
+                  onClick={() => setIsColumnModalOpen(true)}
+                  className="flex items-center space-x-2 text-gray-600 hover:text-gray-800"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Column</span>
+                </button>
+              </div>
+              <div className="bg-white border-l border-r border-gray-200 flex-1 p-4"></div>
             </div>
-            <div className="bg-white border-l border-r border-gray-200 flex-1 p-4"></div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -637,24 +686,30 @@ export function TaskPageClient({
       />
 
       {/* Modal Components */}
-      <CreateTaskModal
-        isOpen={isTaskModalOpen}
-        onClose={closeCreateTaskModal}
-        onCreateTask={handleCreateTask}
-      />
+      {canCreateTasks && (
+        <CreateTaskModal
+          isOpen={isTaskModalOpen}
+          onClose={closeCreateTaskModal}
+          onCreateTask={handleCreateTask}
+        />
+      )}
 
-      <EditTaskModal
-        isOpen={isEditModalOpen}
-        onClose={closeEditTaskModal}
-        onUpdateTask={handleUpdateTaskFromModal}
-      />
+      {canEditTasks && (
+        <EditTaskModal
+          isOpen={isEditModalOpen}
+          onClose={closeEditTaskModal}
+          onUpdateTask={handleUpdateTaskFromModal}
+        />
+      )}
 
-      <CreateColumnModal
-        isOpen={isColumnModalOpen}
-        onClose={() => setIsColumnModalOpen(false)}
-        onCreateColumn={handleCreateColumn}
-        colorOptions={colorOptions}
-      />
+      {canEditTasks && (
+        <CreateColumnModal
+          isOpen={isColumnModalOpen}
+          onClose={() => setIsColumnModalOpen(false)}
+          onCreateColumn={handleCreateColumn}
+          colorOptions={colorOptions}
+        />
+      )}
     </div>
   );
 }

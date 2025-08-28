@@ -109,30 +109,6 @@ export default function HomePage({ teamId: currentTeamId }: HomePageProps) {
     return stripped || "No description";
   };
 
-  const extractPriorityFromDescription = (
-    description?: string | null
-  ): "high" | "medium" | "low" => {
-    if (!description) return "medium";
-    const match = description.match(
-      /Priority:\s*(high|medium|low|hard|urgent|normal|minor)/i
-    );
-    const raw = match?.[1]?.toLowerCase();
-    switch (raw) {
-      case "high":
-      case "hard":
-      case "urgent":
-        return "high";
-      case "low":
-      case "minor":
-        return "low";
-      case "medium":
-      case "normal":
-        return "medium";
-      default:
-        return "medium";
-    }
-  };
-
   const formatDate = (date?: Date | null) => {
     if (!date) return "No due date";
     return new Date(date).toLocaleDateString("en-US", {
@@ -272,10 +248,10 @@ export default function HomePage({ teamId: currentTeamId }: HomePageProps) {
                     <div className="flex items-start justify-between mb-2">
                       <Badge
                         className={`${getPriorityColor(
-                          extractPriorityFromDescription(task.description)
+                          task.priority
                         )} text-white text-xs px-2 py-1`}
                       >
-                        {extractPriorityFromDescription(task.description)}
+                        {task.priority}
                       </Badge>
                       <span className="text-xs text-gray-400">
                         {task.projectName && `${task.projectName}`}

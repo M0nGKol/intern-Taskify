@@ -7,6 +7,8 @@ import { task, NewTask, Task } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { checkProjectPermission } from '@/lib/role-permissions';
+import { auth } from '@/lib/auth';
+import { headers } from 'next/headers';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL!,
@@ -35,9 +37,12 @@ export async function createTask(
   userId?: string
 ): Promise<Task> {
   try {
+    // Resolve acting user
+    const session = await auth.api.getSession({ headers: await headers() });
+    const effectiveUserId = userId ?? session?.user?.id;
     // Check if user has permission to create tasks
-    if (userId && taskData.teamId) {
-      const canCreate = await checkProjectPermission(userId, taskData.teamId, 'canCreateTasks');
+    if (effectiveUserId && taskData.teamId) {
+      const canCreate = await checkProjectPermission(effectiveUserId, taskData.teamId, 'canCreateTasks');
       if (!canCreate) {
         throw new Error('You do not have permission to create tasks in this project');
       }
@@ -75,9 +80,12 @@ export async function createKanbanTask(
   currentUserId?: string
 ): Promise<Task> {
   try {
+    // Resolve acting user
+    const session = await auth.api.getSession({ headers: await headers() });
+    const effectiveUserId = currentUserId ?? session?.user?.id;
     // Check if user has permission to create tasks
-    if (currentUserId && taskData.teamId) {
-      const canCreate = await checkProjectPermission(currentUserId, taskData.teamId, 'canCreateTasks');
+    if (effectiveUserId && taskData.teamId) {
+      const canCreate = await checkProjectPermission(effectiveUserId, taskData.teamId, 'canCreateTasks');
       if (!canCreate) {
         throw new Error('You do not have permission to create tasks in this project');
       }
@@ -135,9 +143,12 @@ export async function updateTask(
       throw new Error('Task not found');
     }
 
+    // Resolve acting user
+    const session = await auth.api.getSession({ headers: await headers() });
+    const effectiveUserId = currentUserId ?? session?.user?.id;
     // Check if user has permission to edit tasks
-    if (currentUserId && currentTask.teamId) {
-      const canEdit = await checkProjectPermission(currentUserId, currentTask.teamId, 'canEditTasks');
+    if (effectiveUserId && currentTask.teamId) {
+      const canEdit = await checkProjectPermission(effectiveUserId, currentTask.teamId, 'canEditTasks');
       if (!canEdit) {
         throw new Error('You do not have permission to edit tasks in this project');
       }
@@ -174,9 +185,12 @@ export async function updateTaskStatus(
       throw new Error('Task not found');
     }
 
+    // Resolve acting user
+    const session = await auth.api.getSession({ headers: await headers() });
+    const effectiveUserId = currentUserId ?? session?.user?.id;
     // Check if user has permission to change task status
-    if (currentUserId && currentTask.teamId) {
-      const canChangeStatus = await checkProjectPermission(currentUserId, currentTask.teamId, 'canChangeTaskStatus');
+    if (effectiveUserId && currentTask.teamId) {
+      const canChangeStatus = await checkProjectPermission(effectiveUserId, currentTask.teamId, 'canChangeTaskStatus');
       if (!canChangeStatus) {
         throw new Error('You do not have permission to change task status in this project');
       }
@@ -207,9 +221,12 @@ export async function deleteTask(id: string, currentUserId?: string): Promise<bo
       throw new Error('Task not found');
     }
 
+    // Resolve acting user
+    const session = await auth.api.getSession({ headers: await headers() });
+    const effectiveUserId = currentUserId ?? session?.user?.id;
     // Check if user has permission to delete tasks
-    if (currentUserId && currentTask.teamId) {
-      const canDelete = await checkProjectPermission(currentUserId, currentTask.teamId, 'canDeleteTasks');
+    if (effectiveUserId && currentTask.teamId) {
+      const canDelete = await checkProjectPermission(effectiveUserId, currentTask.teamId, 'canDeleteTasks');
       if (!canDelete) {
         throw new Error('You do not have permission to delete tasks in this project');
       }

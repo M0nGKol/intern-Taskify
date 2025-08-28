@@ -15,7 +15,6 @@ import {
 } from "@/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { sendProjectInviteEmail } from "@/lib/resend";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { sendInviteEmail } from "@/lib/email";
@@ -71,6 +70,38 @@ export async function getAllProjects(): Promise<Project[]> {
   } catch (error) {
     console.error("Error fetching user projects:", error);
     throw new Error("Failed to fetch projects");
+  }
+}
+
+export async function getAllProjectsWithRoles(): Promise<(Project & { userRole: string })[]> {
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session || !session.user) {
+      throw new Error("User not authenticated");
+    }
+
+    const userId = session.user.id;
+
+    const userProjects = await db
+      .select({
+        id: project.id,
+        name: project.name,
+        teamId: project.teamId,
+        createdAt: project.createdAt,
+        updatedAt: project.updatedAt,
+        userRole: projectMember.role,
+      })
+      .from(project)
+      .innerJoin(projectMember, eq(project.id, projectMember.projectId))
+      .where(eq(projectMember.userId, userId));
+
+    return userProjects as (Project & { userRole: string })[];
+  } catch (error) {
+    console.error("Error fetching user projects with roles:", error);
+    throw new Error("Failed to fetch projects with roles");
   }
 }
 
@@ -226,17 +257,12 @@ export async function inviteToProject(params: {
       .select()
       .from(project)
       .where(eq(project.id, resolvedId));
-    // const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    // const acceptUrl = `${baseUrl}/invite/${params.token}`;
+    
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    // Use server route for robust redirect (handles auth + redirects appropriately)
+    const acceptUrl = `${baseUrl}/api/accept-invite?token=${encodeURIComponent(params.token)}`;
 
-    // await sendProjectInviteEmail({
-    //   to: params.email.toLowerCase(),
-    //   projectName: (proj as Project)?.name,
-    //   role: params.role,
-    //   acceptUrl,
-    // });
-
-    // await sendInviteEmail(params.email, (proj as Project)?.name, params.role, acceptUrl);
+    await sendInviteEmail(params.email, (proj as Project)?.name, params.role, acceptUrl);
   } catch (err) {
     console.error("Failed to send invite email:", err);
   }
@@ -359,8 +385,6 @@ export async function joinProjectByTeamId(params: {
     if (!project) {
       throw new Error("Project not found with the provided Team ID");
     }
-
-    // Check if user is already a member
     const existingMember = await db
       .select()
       .from(projectMember)
@@ -383,14 +407,9 @@ export async function joinProjectByTeamId(params: {
       };
     }
 
-    // Determine the role to assign
-    // Default to "viewer" for security, allow "editor" if explicitly requested
     const roleToAssign: ProjectMember["role"] = 
       params.requestedRole === "editor" ? "editor" : "viewer";
 
-    console.log("Adding user as new member with role:", roleToAssign);
-
-    // Add user as a project member
     const inserted = await db
       .insert(projectMember)
       .values({
@@ -412,5 +431,68 @@ export async function joinProjectByTeamId(params: {
   } catch (error) {
     console.error("Error joining project by team ID:", error);
     throw error; // Re-throw to let caller handle specific errors
+  }
+}
+
+export async function leaveProject(params: {
+  projectId: string;
+  userId: string;
+}): Promise<{ success: boolean; message: string }> {
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session || !session.user) {
+      return { success: false, message: "User not authenticated" };
+    }
+
+    // Ensure the user can only leave their own membership
+    if (session.user.id !== params.userId) {
+      return { success: false, message: "Not authorized to perform this action" };
+    }
+
+    const resolvedProjectId = await resolveProjectId(params.projectId);
+    if (!resolvedProjectId) {
+      return { success: false, message: "Project not found" };
+    }
+
+    // Check if user is a member of the project
+    const [member] = await db
+      .select()
+      .from(projectMember)
+      .where(
+        and(
+          eq(projectMember.projectId, resolvedProjectId),
+          eq(projectMember.userId, params.userId)
+        )
+      );
+
+    if (!member) {
+      return { success: false, message: "You are not a member of this project" };
+    }
+
+    // Check if user is the owner - owners cannot leave the project
+    if (member.role === "owner") {
+      return { 
+        success: false, 
+        message: "Project owners cannot leave the project. Transfer ownership or delete the project instead." 
+      };
+    }
+
+    // Remove the user from the project
+    await db
+      .delete(projectMember)
+      .where(
+        and(
+          eq(projectMember.projectId, resolvedProjectId),
+          eq(projectMember.userId, params.userId)
+        )
+      );
+
+    return { success: true, message: "Successfully left the project" };
+  } catch (error) {
+    console.error("Error leaving project:", error);
+    return { success: false, message: "Failed to leave project" };
   }
 }

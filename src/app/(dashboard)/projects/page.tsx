@@ -1,5 +1,5 @@
 import React from "react";
-import { getAllProjects } from "@/actions/project-action";
+import { getAllProjectsWithRoles } from "@/actions/project-action";
 import { getTaskCountsForAllProjects } from "@/actions/task-action";
 import { Project } from "@/db/schema";
 import { auth } from "@/lib/auth";
@@ -9,12 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CalendarDays, Users, ArrowRight, BarChart3 } from "lucide-react";
 import Link from "next/link";
+import LeaveProjectButton from "@/components/LeaveProjectEntry";
 
-// Define the type for projects with task counts
+// Define the type for projects with task counts and user role
 type ProjectWithTaskCounts = Project & {
   taskCount: number;
   completedTasks: number;
   inProgressTasks: number;
+  userRole: string;
 };
 
 export default async function ProjectsPage() {
@@ -40,11 +42,11 @@ export default async function ProjectsPage() {
     );
   }
 
-  let projects: Project[] = [];
+  let projects: (Project & { userRole: string })[] = [];
   let projectsWithTaskCounts: ProjectWithTaskCounts[] = [];
 
   try {
-    projects = await getAllProjects();
+    projects = await getAllProjectsWithRoles();
 
     // Fetch real task counts for all projects
     if (projects.length > 0) {
@@ -67,6 +69,7 @@ export default async function ProjectsPage() {
           taskCount: counts.totalTasks,
           completedTasks: counts.doneTasks,
           inProgressTasks: counts.inProgressTasks,
+          userRole: project.userRole,
         };
       });
     }
@@ -124,9 +127,18 @@ export default async function ProjectsPage() {
                       <CardTitle className="text-lg font-semibold text-gray-900 truncate">
                         {project.name}
                       </CardTitle>
-                      <Badge variant="secondary" className="text-xs">
-                        Active
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">
+                          {project.userRole === "owner" ? "Owner" : "Active"}
+                        </Badge>
+                        {project.userRole !== "owner" && (
+                          <LeaveProjectButton
+                            projectId={project.id}
+                            projectName={project.name}
+                            userId={session?.user?.id}
+                          />
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">

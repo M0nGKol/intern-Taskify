@@ -1,8 +1,15 @@
 import { sendInviteEmail } from "@/lib/email";
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
+    // Require authenticated session (BetterAuth)
+    const session = await auth.api.getSession({ headers: req.headers });
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { email, projectName, role, acceptUrl } = await req.json();
     
     // Validate required fields

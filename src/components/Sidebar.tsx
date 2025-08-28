@@ -1,12 +1,11 @@
 "use client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Home, Rocket, CheckSquare, FileText, LogOut } from "lucide-react";
+import { Home, Rocket, CheckSquare, LogOut } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
-import { NotificationBell } from "@/components/NotificationBell";
 
 const Sidebar = () => {
   const { user, signOut } = useAuth();
@@ -81,22 +80,6 @@ const Sidebar = () => {
               <div className="w-8 h-0.5 bg-white mt-2"></div>
             )}
           </Link>
-
-          <Link
-            href="/notes"
-            className={`flex flex-col items-center cursor-pointer ${
-              pathname === "/notes"
-                ? "text-white"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            <FileText className="w-6 h-6 mb-1" />
-            <span className="text-xs">Notes</span>
-            {pathname === "/notes" && (
-              <div className="w-8 h-0.5 bg-white mt-2"></div>
-            )}
-          </Link>
-          <NotificationBell />
         </nav>
 
         <div className="mt-auto space-y-4">

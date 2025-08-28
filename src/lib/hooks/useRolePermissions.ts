@@ -45,6 +45,8 @@ export function useRolePermissions(userId?: string, projectKey?: string) {
     canCreateTasks: permissions?.canCreateTasks ?? false,
     canEditTasks: permissions?.canEditTasks ?? false,
     canDeleteTasks: permissions?.canDeleteTasks ?? false,
+    canChangeTaskStatus: permissions?.canChangeTaskStatus ?? false,
+    canAssignTasks: permissions?.canAssignTasks ?? false,
     canViewOnly: role === "viewer",
     isOwner: role === "owner",
     isEditor: role === "editor",

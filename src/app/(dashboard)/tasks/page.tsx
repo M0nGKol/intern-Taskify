@@ -19,7 +19,7 @@ import {
   updateTask,
   deleteTask,
 } from "@/actions/task-action";
-import { getAllProjects } from "@/actions/project-action";
+import { getAllProjectsWithRoles } from "@/actions/project-action";
 
 export type ViewType = "day" | "week" | "month" | "year";
 export type PriorityFilter = "all" | "high" | "medium" | "low";
@@ -28,7 +28,7 @@ export default function TasksPage() {
   // Data state
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<
-    { id: string; name: string; teamId: string }[]
+    { id: string; name: string; teamId: string; userRole: string }[]
   >([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -68,7 +68,7 @@ export default function TasksPage() {
       // Fetch all tasks and projects in parallel
       const [allTasks, allProjects] = await Promise.all([
         getAllTasks(),
-        getAllProjects(),
+        getAllProjectsWithRoles(),
       ]);
 
       setTasks(allTasks as Task[]);
