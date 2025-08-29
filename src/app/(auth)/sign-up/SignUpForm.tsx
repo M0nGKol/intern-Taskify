@@ -10,6 +10,7 @@ import { authClient } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
 import { toast } from "sonner";
+import TermsModal from "@/components/modals/terms-modal";
 
 export default function SignUp() {
   const [name, setName] = useState("");
@@ -235,12 +236,11 @@ export default function SignUp() {
                 <Label htmlFor="terms" className="text-xs text-gray-700">
                   By checking this box, I acknowledge that I have read and agree
                   to the{" "}
-                  <Link
-                    href="#"
-                    className="text-[#5FA8D3] hover:underline underline"
-                  >
-                    Terms and Conditions
-                  </Link>
+                  <TermsModal>
+                    <span className="text-[#5FA8D3] hover:underline underline cursor-pointer">
+                      Terms and Conditions
+                    </span>
+                  </TermsModal>
                   .
                 </Label>
               </div>
