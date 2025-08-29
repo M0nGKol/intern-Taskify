@@ -91,7 +91,7 @@ export function TaskPageClient({
   } = useRolePermissions(userId, teamId);
 
   // Project switching
-  const [projectQuery, setProjectQuery] = useState("");
+  const [projectQuery] = useState("");
   const [filteredProjects, setFilteredProjects] = useState(dbProjects);
 
   // Drag and drop state for columns

@@ -137,16 +137,15 @@ export async function updateTask(
   currentUserId?: string
 ): Promise<Task | null> {
   try {
-    // Get the current task to check permissions
     const [currentTask] = await db.select().from(task).where(eq(task.id, id));
     if (!currentTask) {
       throw new Error('Task not found');
     }
 
-    // Resolve acting user
+
     const session = await auth.api.getSession({ headers: await headers() });
     const effectiveUserId = currentUserId ?? session?.user?.id;
-    // Check if user has permission to edit tasks
+
     if (effectiveUserId && currentTask.teamId) {
       const canEdit = await checkProjectPermission(effectiveUserId, currentTask.teamId, 'canEditTasks');
       if (!canEdit) {
@@ -323,7 +322,6 @@ export async function getTaskCountsForAllProjects(projects: { teamId: string; na
   try {
     const results: Record<string, ProjectTaskCounts> = {};
     
-    // Fetch task counts for each project in parallel
     const promises = projects.map(async (project) => {
       const counts = await getTaskCountsByProject(project.teamId, project.name);
       return { key: project.teamId, counts };
