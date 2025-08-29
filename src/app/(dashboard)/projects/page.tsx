@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { CalendarDays, Users, ArrowRight, BarChart3 } from "lucide-react";
 import Link from "next/link";
 import LeaveProjectButton from "@/components/LeaveProjectEntry";
+import DeleteProjectButton from "@/components/DeleteProjectEntry";
 
 // Define the type for projects with task counts and user role
 type ProjectWithTaskCounts = Project & {
@@ -103,7 +104,6 @@ export default async function ProjectsPage() {
           {/* Projects Grid */}
           {projectsWithTaskCounts.length === 0 ? (
             <div className="text-center py-12">
-              <div className="text-6xl mb-4">📋</div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
                 No Projects Yet
               </h3>
@@ -131,7 +131,13 @@ export default async function ProjectsPage() {
                         <Badge variant="secondary" className="text-xs">
                           {project.userRole === "owner" ? "Owner" : "Active"}
                         </Badge>
-                        {project.userRole !== "owner" && (
+                        {project.userRole === "owner" ? (
+                          <DeleteProjectButton
+                            projectId={project.id}
+                            projectName={project.name}
+                            teamId={project.teamId}
+                          />
+                        ) : (
                           <LeaveProjectButton
                             projectId={project.id}
                             projectName={project.name}

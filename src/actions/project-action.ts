@@ -182,24 +182,33 @@ export async function getProjectsByTeamIds(teamIds: string[]): Promise<Project[]
   }
 }
 
-export async function deleteProjectById(projectId: string): Promise<boolean> {
+
+export async function deleteProjectByTeamId(teamId: string): Promise<boolean> {
   try {
     const [existing] = await db
       .select()
       .from(project)
-      .where(eq(project.id, projectId));
+      .where(eq(project.teamId, teamId));
 
     if (!existing) {
       return false;
     }
 
-    await db.delete(task).where(eq(task.teamId, existing.teamId));
+    // Delete all tasks associated with this team
+    await db.delete(task).where(eq(task.teamId, teamId));
 
-    const deleted = await db.delete(project).where(eq(project.id, projectId));
+    // Delete all project members
+    await db.delete(projectMember).where(eq(projectMember.projectId, existing.id));
+
+    // Delete all project invites
+    await db.delete(projectInvite).where(eq(projectInvite.projectId, existing.id));
+
+    // Delete the project
+    const deleted = await db.delete(project).where(eq(project.teamId, teamId));
 
     return Array.isArray(deleted) ? deleted.length > 0 : true;
   } catch (error) {
-    console.error("Error deleting project:", error);
+    console.error("Error deleting project by teamId:", error);
     throw new Error("Failed to delete project");
   }
 }
@@ -259,7 +268,6 @@ export async function inviteToProject(params: {
       .where(eq(project.id, resolvedId));
     
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    // Use server route for robust redirect (handles auth + redirects appropriately)
     const acceptUrl = `${baseUrl}/api/accept-invite?token=${encodeURIComponent(params.token)}`;
 
     await sendInviteEmail(params.email, (proj as Project)?.name, params.role, acceptUrl);
@@ -332,17 +340,6 @@ export async function listPendingInvitesForEmail(
   }));
 }
 
-export async function declineProjectInvite(
-  params: { token: string }
-): Promise<boolean> {
-  try {
-    await db.delete(projectInvite).where(eq(projectInvite.token, params.token));
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 export async function acceptProjectInvite(params: {
   token: string;
   userId: string;
@@ -373,14 +370,10 @@ export async function acceptProjectInvite(params: {
 export async function joinProjectByTeamId(params: {
   teamId: string;
   userId: string;
-  requestedRole?: "viewer" | "editor"; // Users can only request viewer or editor roles
+  requestedRole?: "viewer" | "editor";
 }): Promise<{ project: Project; member: ProjectMember; isNewMember: boolean } | null> {
   try {
-    console.log("joinProjectByTeamId called with params:", params);
-    
-    // First, find the project by team ID
     const project = await getProjectByTeamId(params.teamId);
-    console.log("Found project:", project);
     
     if (!project) {
       throw new Error("Project not found with the provided Team ID");
@@ -395,11 +388,7 @@ export async function joinProjectByTeamId(params: {
         )
       );
 
-    console.log("Existing member check:", existingMember);
-
     if (existingMember.length > 0) {
-      // User is already a member, return existing membership
-      console.log("User is already a member");
       return {
         project,
         member: existingMember[0] as ProjectMember,
@@ -421,7 +410,6 @@ export async function joinProjectByTeamId(params: {
       .returning();
 
     const member = inserted[0] as ProjectMember;
-    console.log("New member created:", member);
 
     return {
       project,
@@ -430,7 +418,7 @@ export async function joinProjectByTeamId(params: {
     };
   } catch (error) {
     console.error("Error joining project by team ID:", error);
-    throw error; // Re-throw to let caller handle specific errors
+    throw error;
   }
 }
 
@@ -446,8 +434,6 @@ export async function leaveProject(params: {
     if (!session || !session.user) {
       return { success: false, message: "User not authenticated" };
     }
-
-    // Ensure the user can only leave their own membership
     if (session.user.id !== params.userId) {
       return { success: false, message: "Not authorized to perform this action" };
     }
@@ -457,7 +443,6 @@ export async function leaveProject(params: {
       return { success: false, message: "Project not found" };
     }
 
-    // Check if user is a member of the project
     const [member] = await db
       .select()
       .from(projectMember)
@@ -472,7 +457,6 @@ export async function leaveProject(params: {
       return { success: false, message: "You are not a member of this project" };
     }
 
-    // Check if user is the owner - owners cannot leave the project
     if (member.role === "owner") {
       return { 
         success: false, 
@@ -480,7 +464,6 @@ export async function leaveProject(params: {
       };
     }
 
-    // Remove the user from the project
     await db
       .delete(projectMember)
       .where(

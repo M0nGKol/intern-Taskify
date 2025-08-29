@@ -43,7 +43,6 @@ export function InviteTeamModal({
   const [resolvedProjectName, setResolvedProjectName] = useState(
     projectName || ""
   );
-  const pathname = usePathname();
   const params = useParams();
   const routeTeamId = (params?.id as string) || null;
   const { user } = useAuth();
@@ -82,15 +81,6 @@ export function InviteTeamModal({
   }, [isOpen, currentTeamId, user?.id]);
 
   const handleInvite = async () => {
-    console.log("🔍 Debug values:", {
-      currentTeamId,
-      userId: user?.id,
-      user,
-      projectName,
-      pathname,
-      hasProject: currentTeamId && user?.id,
-    });
-
     if (!currentTeamId || !user?.id) {
       toast.error(
         `Missing project or user information. TeamId: ${
@@ -100,18 +90,11 @@ export function InviteTeamModal({
       return;
     }
 
-    // Temporarily comment out the role check to test
-    // if (myRole !== "owner") {
-    //   toast.error("Only owners can invite members");
-    //   return;
-    // }
-
     const trimmed = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       toast.error("Enter a valid email address");
       return;
     }
-    console.log("1");
     setPending(true);
     try {
       const token = nanoid(64);
@@ -125,13 +108,6 @@ export function InviteTeamModal({
       });
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
       const acceptUrl = `${baseUrl}/invite/${encodeURIComponent(token)}`;
-
-      console.log("Sending invitation with:", {
-        email: trimmed,
-        projectName: resolvedProjectName || projectName || "Unknown Project",
-        role,
-        acceptUrl,
-      });
 
       const finalProjectName =
         resolvedProjectName || projectName || "Unknown Project";
@@ -152,12 +128,8 @@ export function InviteTeamModal({
         throw new Error(errorData.error || "Failed to send invitation");
       }
 
-      const result = await response.json();
-      console.log("Email sent successfully:", result);
-
       toast.success("Invitation sent");
       setEmail("");
-      console.log("done");
       try {
         const list = await listProjectInvites(currentTeamId);
         setInvites(list.map((i) => ({ email: i.email, role: i.role })));

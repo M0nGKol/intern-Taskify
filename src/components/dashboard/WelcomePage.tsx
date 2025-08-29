@@ -20,18 +20,18 @@ export default function WelcomePage() {
 
             {/* Info Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-              <div className="text-center p-6 bg-white rounded-lg shadow-sm border">
+              <div className="text-center p-6 rounded-lg border-2 border-primary">
                 <div className="text-4xl mb-3">🚀</div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   Create Projects
                 </h3>
-                <p className="text-gray-600 text-sm">
+                <p className="text-gray-600 text-sm ">
                   Start organizing your work by creating your first project and
                   adding tasks.
                 </p>
               </div>
 
-              <div className="text-center p-6 bg-white rounded-lg shadow-sm border">
+              <div className="text-center p-6 rounded-lg border-2 border-primary">
                 <div className="text-4xl mb-3">👥</div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   Collaborate
@@ -42,7 +42,7 @@ export default function WelcomePage() {
                 </p>
               </div>
 
-              <div className="text-center p-6 bg-white rounded-lg shadow-sm border">
+              <div className="text-center p-6 rounded-lg border-2 border-primary">
                 <div className="text-4xl mb-3">✅</div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   Track Progress

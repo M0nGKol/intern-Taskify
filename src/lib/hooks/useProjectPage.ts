@@ -4,7 +4,7 @@ import { useColumnManagement } from "@/lib/hooks/useColumnManagement";
 import { useDragAndDrop } from "@/lib/hooks/useDragAndDrop";
 import { useModalManagement } from "@/lib/hooks/useModalManagement";
 import { usePersistentProjectState } from "@/lib/hooks/usePersistentProjectState";
-import { getAllProjects, deleteProjectById } from "@/actions/project-action";
+import { getAllProjects, deleteProjectByTeamId } from "@/actions/project-action";
 
 type ViewTask = {
   id: string;
@@ -220,7 +220,7 @@ export function useProjectsPage() {
       try {
         const match = dbProjects.find((p) => p.name === name);
         if (!match) return;
-        await deleteProjectById(match.id);
+        await deleteProjectByTeamId(match.id);
         setDbProjects((prev) => prev.filter((p) => p.id !== match.id));
       } catch {}
     },

@@ -20,6 +20,8 @@ import {
   deleteTask,
 } from "@/actions/task-action";
 import { getAllProjectsWithRoles } from "@/actions/project-action";
+import { useRolePermissions } from "@/lib/hooks/useRolePermissions";
+import { TaskDetailsModal } from "@/components/modals/task-details-modal";
 
 export type ViewType = "day" | "week" | "month" | "year";
 export type PriorityFilter = "all" | "high" | "medium" | "low";
@@ -44,6 +46,7 @@ export default function TasksPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
   // Time slots for week view (24h)
   const timeSlots = Array.from({ length: 24 }, (_, i) => i);
@@ -59,6 +62,17 @@ export default function TasksPage() {
     } catch {}
     return "";
   }, []);
+
+  const currentTeamId = getCurrentTeamId();
+
+  // Get role permissions for the current project
+  const {
+    canCreateTasks,
+    canEditTasks,
+    canDeleteTasks,
+    canViewOnly,
+    loading: permissionsLoading,
+  } = useRolePermissions(currentTeamId, currentTeamId);
 
   // Fetch data
   const fetchData = useCallback(async () => {
@@ -231,6 +245,11 @@ export default function TasksPage() {
     dueDate?: Date;
     priority: "high" | "medium" | "low";
   }) => {
+    if (!canCreateTasks) {
+      toast.error("You do not have permission to create tasks");
+      return;
+    }
+
     try {
       const teamId = getCurrentTeamId();
       if (!teamId) {
@@ -261,6 +280,10 @@ export default function TasksPage() {
     priority: "high" | "medium" | "low";
   }) => {
     if (!selectedTask) return;
+    if (!canEditTasks) {
+      toast.error("You do not have permission to edit tasks");
+      return;
+    }
 
     try {
       await updateTask(selectedTask.id, {
@@ -280,6 +303,10 @@ export default function TasksPage() {
 
   const handleDeleteTask = async () => {
     if (!selectedTask) return;
+    if (!canDeleteTasks) {
+      toast.error("You do not have permission to delete tasks");
+      return;
+    }
 
     try {
       await deleteTask(selectedTask.id);
@@ -293,7 +320,25 @@ export default function TasksPage() {
     }
   };
 
-  if (isLoading) {
+  // Handle task click - show task details
+  const handleTaskClick = (task: Task) => {
+    setSelectedTask(task);
+    setIsDetailsModalOpen(true);
+  };
+
+  // Handle edit from details modal
+  const handleEditFromDetails = () => {
+    setIsDetailsModalOpen(false);
+    setIsEditModalOpen(true);
+  };
+
+  // Handle delete from details modal
+  const handleDeleteFromDetails = () => {
+    setIsDetailsModalOpen(false);
+    setIsDeleteModalOpen(true);
+  };
+
+  if (isLoading || permissionsLoading) {
     return <TasksPageSkeleton />;
   }
 
@@ -462,9 +507,11 @@ export default function TasksPage() {
                   className="pl-10 w-64"
                 />
               </div>
-              <Button onClick={() => setIsCreateModalOpen(true)}>
-                New Task
-              </Button>
+              {canCreateTasks && (
+                <Button onClick={() => setIsCreateModalOpen(true)}>
+                  New Task
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -513,41 +560,91 @@ export default function TasksPage() {
                     key={date.toISOString()}
                     className="border-r border-gray-200 relative"
                   >
-                    {timeSlots.map((hour) => (
-                      <div
-                        key={hour}
-                        className="h-16 border-b border-gray-200 relative"
-                      >
-                        {/* Tasks for this time slot */}
-                        {getTasksForDate(date).map((task) => {
+                    {timeSlots.map((hour) => {
+                      // Get all tasks for this specific hour
+                      const tasksForHour = getTasksForDate(date).filter(
+                        (task) => {
                           const taskHour = task.dueDate
                             ? new Date(task.dueDate).getHours()
                             : 0;
-                          if (taskHour === hour) {
+                          return taskHour === hour;
+                        }
+                      );
+
+                      return (
+                        <div
+                          key={hour}
+                          className="h-16 border-b border-gray-200 relative"
+                        >
+                          {/* Render multiple tasks for this time slot */}
+                          {tasksForHour.map((task, index) => {
                             const priority =
                               task.priority ||
                               extractPriorityFromDescription(task.description);
+
+                            // Calculate position for stacked tasks
+                            const taskHeight = Math.min(
+                              60 / tasksForHour.length,
+                              40
+                            ); // Max 40px per task, min 60px total
+                            const topPosition = index * taskHeight + 2; // 2px margin from top
+
                             return (
                               <div
                                 key={task.id}
-                                className="absolute left-1 right-1 top-1 bottom-1 bg-blue-100 border border-blue-300 rounded-md p-2 cursor-pointer hover:bg-blue-200 transition-colors"
-                                onClick={() => {
-                                  setSelectedTask(task);
-                                  setIsEditModalOpen(true);
+                                className={cn(
+                                  "absolute left-1 right-1 rounded-md p-1 transition-opacity",
+                                  canViewOnly || canEditTasks
+                                    ? "cursor-pointer hover:opacity-80"
+                                    : "cursor-default"
+                                )}
+                                style={{
+                                  top: `${topPosition}px`,
+                                  height: `${taskHeight - 4}px`, // 4px for margins
+                                  backgroundColor:
+                                    priority === "high"
+                                      ? "#fef2f2"
+                                      : priority === "medium"
+                                      ? "#fffbeb"
+                                      : priority === "low"
+                                      ? "#f0fdf4"
+                                      : "#eff6ff",
+                                  border:
+                                    priority === "high"
+                                      ? "1px solid #fecaca"
+                                      : priority === "medium"
+                                      ? "1px solid #fed7aa"
+                                      : priority === "low"
+                                      ? "1px solid #bbf7d0"
+                                      : "1px solid #bfdbfe",
                                 }}
+                                onClick={() => handleTaskClick(task)}
+                                title={`${task.title} - ${
+                                  task.dueDate
+                                    ? new Date(task.dueDate).toLocaleTimeString(
+                                        "en-US",
+                                        { hour: "2-digit", minute: "2-digit" }
+                                      )
+                                    : "No time"
+                                }`}
                               >
-                                <div className="text-xs font-medium text-blue-900 truncate">
-                                  {task.title}
-                                </div>
-                                <div className="flex items-center space-x-1 mt-1">
+                                <div className="flex items-center space-x-1">
                                   <div
-                                    className={cn("w-2 h-2 rounded-full", {
-                                      "bg-red-500": priority === "high",
-                                      "bg-yellow-500": priority === "medium",
-                                      "bg-green-500": priority === "low",
-                                    })}
+                                    className={cn(
+                                      "w-2 h-2 rounded-full flex-shrink-0",
+                                      {
+                                        "bg-red-500": priority === "high",
+                                        "bg-yellow-500": priority === "medium",
+                                        "bg-green-500": priority === "low",
+                                      }
+                                    )}
                                   />
-                                  <span className="text-xs">
+                                  <div className="text-xs font-medium truncate flex-1">
+                                    {task.title}
+                                  </div>
+                                </div>
+                                {tasksForHour.length === 1 && (
+                                  <div className="text-xs text-gray-500 mt-1">
                                     {task.dueDate
                                       ? new Date(
                                           task.dueDate
@@ -557,15 +654,14 @@ export default function TasksPage() {
                                           hour12: false,
                                         })
                                       : ""}
-                                  </span>
-                                </div>
+                                  </div>
+                                )}
                               </div>
                             );
-                          }
-                          return null;
-                        })}
-                      </div>
-                    ))}
+                          })}
+                        </div>
+                      );
+                    })}
                   </div>
                 ))}
               </div>
@@ -590,11 +686,13 @@ export default function TasksPage() {
                   return (
                     <Card
                       key={task.id}
-                      className="cursor-pointer hover:shadow-md transition-shadow"
-                      onClick={() => {
-                        setSelectedTask(task);
-                        setIsEditModalOpen(true);
-                      }}
+                      className={cn(
+                        "transition-shadow",
+                        canViewOnly || canEditTasks
+                          ? "cursor-pointer hover:shadow-md"
+                          : "cursor-default"
+                      )}
+                      onClick={() => handleTaskClick(task)}
                     >
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
@@ -650,39 +748,58 @@ export default function TasksPage() {
       </div>
 
       {/* Modals */}
-      <CreateTaskModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onCreateTask={handleCreateTask}
+      {canCreateTasks && (
+        <CreateTaskModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onCreateTask={handleCreateTask}
+        />
+      )}
+
+      {/* Task Details Modal */}
+      <TaskDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setSelectedTask(null);
+        }}
+        task={selectedTask}
+        onEdit={handleEditFromDetails}
+        onDelete={handleDeleteFromDetails}
+        canEdit={canEditTasks}
+        canDelete={canDeleteTasks}
       />
 
-      {selectedTask && (
-        <>
-          <EditTaskModal
-            isOpen={isEditModalOpen}
-            onClose={() => {
-              setIsEditModalOpen(false);
-              setSelectedTask(null);
-            }}
-            task={{
-              ...selectedTask,
-              description: selectedTask.description ?? undefined,
-              dueDate: selectedTask.dueDate ?? undefined,
-              projectName: selectedTask.projectName ?? undefined,
-              userId: selectedTask.userId ?? undefined,
-            }}
-            onUpdateTask={handleEditTask}
-          />
-          <DeleteTaskModal
-            isOpen={isDeleteModalOpen}
-            onClose={() => {
-              setIsDeleteModalOpen(false);
-              setSelectedTask(null);
-            }}
-            onConfirm={handleDeleteTask}
-            taskTitle={selectedTask.title}
-          />
-        </>
+      {/* Edit Task Modal */}
+      {selectedTask && canEditTasks && (
+        <EditTaskModal
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setSelectedTask(null);
+          }}
+          task={{
+            ...selectedTask,
+            description: selectedTask.description ?? undefined,
+            dueDate: selectedTask.dueDate ?? undefined,
+            projectName: selectedTask.projectName ?? undefined,
+            userId: selectedTask.userId ?? undefined,
+          }}
+          onUpdateTask={handleEditTask}
+        />
+      )}
+
+      {/* Delete Task Modal */}
+      {selectedTask && canDeleteTasks && (
+        <DeleteTaskModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => {
+            setIsDeleteModalOpen(false);
+            setSelectedTask(null);
+          }}
+          onConfirm={handleDeleteTask}
+          taskTitle={selectedTask.title}
+        />
       )}
     </div>
   );

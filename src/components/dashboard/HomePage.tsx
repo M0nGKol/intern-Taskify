@@ -15,6 +15,8 @@ import {
 import { Task, Project } from "@/db/schema";
 import { toast } from "sonner";
 import { HomePageSkeleton } from "@/components/HomePageSkeleton";
+import { CreateProjectModal } from "../modals/create-project-modal";
+import { JoinTeamModal } from "../modals/join-team-modal";
 
 interface HomePageProps {
   projectName: string;
@@ -32,6 +34,18 @@ export default function HomePage({ teamId: currentTeamId }: HomePageProps) {
   const [isProjectSwitching, setIsProjectSwitching] = useState(false);
   const [monthDate] = useState<Date>(new Date());
   const [showAllProjects, setShowAllProjects] = useState(false);
+
+  const handleProjectCreated = (name: string, teamId: string) => {
+    toast.success("Project created successfully!");
+    router.push(`/dashboard?project=${teamId}`);
+    router.refresh();
+  };
+
+  const handleProjectJoined = (name: string, teamId: string) => {
+    toast.success(`Successfully joined project: ${name}`);
+    router.push(`/dashboard?project=${teamId}`);
+    router.refresh();
+  };
 
   const switchToProject = async (project: Project) => {
     if (project.teamId === currentTeamId) return;
@@ -130,7 +144,6 @@ export default function HomePage({ teamId: currentTeamId }: HomePageProps) {
     (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
   );
 
-  // Helper function to render task count badges
   const renderTaskCounts = (teamId: string) => {
     const counts = projectTaskCounts[teamId];
     if (!counts) return null;
@@ -158,6 +171,12 @@ export default function HomePage({ teamId: currentTeamId }: HomePageProps) {
 
   return (
     <div className="px-4 md:px-8">
+      {/* Top Right Modals */}
+      <div className="flex justify-end items-center space-x-4 mb-6 pt-4">
+        <CreateProjectModal onProjectCreated={handleProjectCreated} />
+        <JoinTeamModal onProjectJoined={handleProjectJoined} />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-[repeat(2,1fr)] gap-6 p-4 h-screen">
         {/* Recent Projects Section */}
         <Card className="border-2 border-slate-300 flex flex-col">

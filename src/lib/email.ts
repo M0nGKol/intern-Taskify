@@ -41,18 +41,14 @@ const transporter = () => {
     };
 
     if (!transport) {
-      console.log("Failed to create transport")
       return { success: false, error: "Failed to create transport" }
     }
 
     try {
-      const info = await transport.sendMail(mailOptions);
-      console.log("Email sent successfully:", info);
-      
+      const info = await transport.sendMail(mailOptions);     
       // For test environments, try to get preview URL
       const previewUrl = nodemailer.getTestMessageUrl(info);
       if (previewUrl) {
-        console.log("Preview URL:", previewUrl);
       }
       
       return { 

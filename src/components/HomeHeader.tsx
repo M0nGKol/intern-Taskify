@@ -47,15 +47,16 @@ export default function HomeHeader({
   return (
     <div>
       <div className="px-12 py-8">
-        <div className="flex justify-between items-start">
+        <div className="flex justify-between items-center">
+          <div className="flex-1"></div>
           <div className="text-center flex-1">
             <p className="text-gray-600 text-base mb-4">{currentDate}</p>
-            <h1 className="text-4xl font-normal text-black">
+            <h1 className="text-3xl font-normal text-black">
               {greeting}
               {user?.name ? `, ${user.name}` : ""}
             </h1>
           </div>
-          <div className="flex items-center space-x-4 top-8 right-12">
+          <div className="flex items-center space-x-4 flex-1 justify-end">
             {!showProjectInfo ? (
               <>
                 <CreateProjectModal onProjectCreated={handleProjectCreated} />

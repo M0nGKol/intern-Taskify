@@ -20,7 +20,7 @@ import {
   updateTask,
   deleteTask,
 } from "@/actions/task-action";
-import { deleteProjectById } from "@/actions/project-action";
+import { deleteProjectByTeamId } from "@/actions/project-action";
 import { toast } from "sonner";
 import { useDragAndDrop } from "@/lib/hooks/useDragAndDrop";
 import { CreateTaskModal } from "@/components/modals/create-task-modal";
@@ -28,6 +28,7 @@ import { CreateColumnModal } from "@/components/modals/create-column-modal";
 import { EditTaskModal } from "@/components/modals/edit-task-modal";
 import { InviteTeamModal } from "./modals/invite-team";
 import { useRolePermissions } from "@/lib/hooks/useRolePermissions";
+import { DeleteProjectModal } from "@/components/modals/delete-project-modal";
 
 // Extended Task type with priority
 type TaskWithPriority = Task & {
@@ -77,6 +78,9 @@ export function TaskPageClient({
   );
   const [selectedColumnId, setSelectedColumnId] = useState<string>("");
   const [viewTask, setViewTask] = useState<ViewTask>(null);
+  const [isDeleteProjectModalOpen, setIsDeleteProjectModalOpen] =
+    useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const {
     canCreateTasks,
     canEditTasks,
@@ -358,7 +362,7 @@ export function TaskPageClient({
     const project = dbProjects.find((p) => p.name === projectName);
     if (project) {
       try {
-        await deleteProjectById(project.id);
+        await deleteProjectByTeamId(project.teamId);
         toast.success("Project deleted successfully");
         // Redirect to dashboard after deleting if this was the current project
         if (project.teamId === teamId) {
@@ -370,6 +374,24 @@ export function TaskPageClient({
         toast.error("Failed to delete project");
       }
     }
+  };
+
+  const handleDeleteProjectClick = (project: Project) => {
+    setProjectToDelete(project);
+    setIsDeleteProjectModalOpen(true);
+  };
+
+  const handleDeleteProjectConfirm = async () => {
+    if (projectToDelete) {
+      await deleteProjectByName(projectToDelete.name);
+      setIsDeleteProjectModalOpen(false);
+      setProjectToDelete(null);
+    }
+  };
+
+  const handleDeleteProjectCancel = () => {
+    setIsDeleteProjectModalOpen(false);
+    setProjectToDelete(null);
   };
 
   return (
@@ -444,9 +466,7 @@ export function TaskPageClient({
                               <Button
                                 variant="destructive"
                                 className="text-xs"
-                                onClick={async () => {
-                                  await deleteProjectByName(p.name);
-                                }}
+                                onClick={() => handleDeleteProjectClick(p)}
                               >
                                 Delete
                               </Button>
@@ -710,6 +730,12 @@ export function TaskPageClient({
           colorOptions={colorOptions}
         />
       )}
+      <DeleteProjectModal
+        isOpen={isDeleteProjectModalOpen}
+        onClose={handleDeleteProjectCancel}
+        onConfirm={handleDeleteProjectConfirm}
+        projectName={projectToDelete?.name || ""}
+      />
     </div>
   );
 }

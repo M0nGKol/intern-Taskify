@@ -52,21 +52,12 @@ export function JoinTeamModal({ onProjectJoined }: JoinTeamModalProps) {
 
     setIsLoading(true);
 
-    // Add debugging logs
-    console.log("Attempting to join project:", {
-      teamId: id,
-      userId: user.id,
-      requestedRole,
-    });
-
     try {
       const result = await joinProjectByTeamId({
         teamId: id,
         userId: user.id,
         requestedRole,
       });
-
-      console.log("Join result:", result);
 
       if (result) {
         // Call the callback to update parent state
@@ -87,7 +78,6 @@ export function JoinTeamModal({ onProjectJoined }: JoinTeamModalProps) {
           );
         }
       } else {
-        console.log("No result returned from joinProjectByTeamId");
         toast.error("Failed to join project - no result returned");
       }
     } catch (error) {
@@ -123,7 +113,7 @@ export function JoinTeamModal({ onProjectJoined }: JoinTeamModalProps) {
   return (
     <Dialog onOpenChange={handleClose}>
       <DialogTrigger asChild>
-        <Button variant="outline">Join Team</Button>
+        <Button variant="outline">Join Project</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
